@@ -622,9 +622,9 @@
     <label>where to</label>
     <div class="dd" id="modeDd" style="flex:1"></div>
   </div>
-  <div class="row">
-    <label>bridge url</label>
-    <input type="text" id="bridgeAddr" value="ws://localhost:8080" spellcheck="false" autocapitalize="off" autocomplete="off">
+  <div class="row" id="midiDeviceRow">
+    <label>midi device</label>
+    <div class="dd" id="midiDeviceDd" style="flex:1"></div>
   </div>
   <div class="row">
     <div class="status">
@@ -632,12 +632,12 @@
       <span id="midiStatus">disconnected</span>
     </div>
     <div class="spacer" style="flex:1"></div>
-    <button class="pill" id="midiConnect">connect</button>
+    <button class="pill" id="midiRetry">retry</button>
   </div>
-  <div class="help">
-    <strong>synth</strong> plays sound inside the browser.<br>
-    <strong>midi</strong> sends MPE messages to a DAW like Ableton — run <code>node bridge.js</code> on your laptop first.<br>
-    <strong>both</strong> plays the browser synth and sends MIDI simultaneously.
+  <div class="help" id="midiHelp">
+    <strong>browser synth</strong> plays inside this page.<br>
+    <strong>midi → daw</strong> sends MPE to your selected MIDI device.<br>
+    <strong>both</strong> does both at once.
   </div>
 </div>
 
@@ -990,22 +990,84 @@ const Audio = (() => {
 
 
 /* ============================================================================
-   MIDIOUT (unchanged)
+   MIDIOUT — Web MIDI API directly in the browser. MPE Lower Zone.
+   No bridge, no WebSocket. Works on Android Chrome via USB-MIDI, on Mac via
+   IAC bus, on Windows laptops via loopMIDI.
 ============================================================================ */
 const MidiOut = (() => {
   const MEMBER_CHANNELS = [1, 2, 3, 4, 5];
   const BEND_RANGE_SEMITONES = 48;
   const Y_CC = 74;
   const SEND_INTERVAL_MS = 5;
-  let ws = null, connected = false;
+
+  let access = null;            // MIDIAccess
+  let currentOutput = null;     // chosen MIDIOutput
+  let currentOutputId = null;
+  let supported = (typeof navigator !== 'undefined' && !!navigator.requestMIDIAccess);
+  let permissionState = 'unknown';   // 'granted' | 'denied' | 'unknown'
   let listeners = new Set();
   const channelState = new Map();
   const freeChannels = [...MEMBER_CHANNELS];
-  function setStatus(c) { connected = c; for (const l of listeners) l(c); }
+
+  function notifyStatus() {
+    const outs = listOutputs();
+    for (const l of listeners) {
+      l({
+        supported,
+        permission: permissionState,
+        outputs: outs,
+        selectedId: currentOutputId,
+        connected: !!currentOutput,
+      });
+    }
+  }
+
+  function listOutputs() {
+    if (!access) return [];
+    const out = [];
+    for (const o of access.outputs.values()) out.push({ id: o.id, name: o.name });
+    return out;
+  }
+
+  async function requestAccess() {
+    if (!supported) { notifyStatus(); return; }
+    try {
+      access = await navigator.requestMIDIAccess({ sysex: false });
+      permissionState = 'granted';
+      access.onstatechange = () => {
+        // device hot-plugged/removed — if our chosen device disappeared, drop it
+        if (currentOutputId) {
+          const still = [...access.outputs.values()].find(o => o.id === currentOutputId);
+          if (!still) { currentOutput = null; currentOutputId = null; }
+          else currentOutput = still;
+        }
+        notifyStatus();
+      };
+      // auto-pick: prefer a port named "Glissando", else first available
+      const list = [...access.outputs.values()];
+      const g = list.find(o => /glissando/i.test(o.name));
+      const pick = g || list[0];
+      if (pick) chooseOutput(pick.id);
+      notifyStatus();
+    } catch (e) {
+      permissionState = 'denied';
+      notifyStatus();
+    }
+  }
+
+  function chooseOutput(id) {
+    if (!access) return;
+    const out = [...access.outputs.values()].find(o => o.id === id);
+    currentOutput = out || null;
+    currentOutputId = out ? out.id : null;
+    if (currentOutput) sendBendRangeRPN();
+    notifyStatus();
+  }
+
   function send(b1, b2, b3) {
-    if (!connected || !ws || ws.readyState !== 1) return;
-    const msg = (b3 === undefined) ? new Uint8Array([b1, b2]) : new Uint8Array([b1, b2, b3]);
-    try { ws.send(msg); } catch (_) {}
+    if (!currentOutput) return;
+    const msg = (b3 === undefined) ? [b1, b2] : [b1, b2, b3];
+    try { currentOutput.send(msg); } catch(_) {}
   }
   function noteOn(ch, note, vel)  { send(0x90 | ch, note & 0x7f, vel & 0x7f); }
   function noteOff(ch, note)      { send(0x80 | ch, note & 0x7f, 0x40); }
@@ -1041,18 +1103,16 @@ const MidiOut = (() => {
     channelState.delete(ch);
     if (!freeChannels.includes(ch)) freeChannels.push(ch);
   }
+
   return {
-    connect(url) {
-      try { ws && ws.close(); } catch(_) {}
-      setStatus(false);
-      try { ws = new WebSocket(url); } catch (e) { return; }
-      ws.binaryType = 'arraybuffer';
-      ws.onopen = () => { setStatus(true); sendBendRangeRPN(); };
-      ws.onclose = () => setStatus(false);
-      ws.onerror = () => setStatus(false);
-    },
-    disconnect() { try { ws && ws.close(); } catch(_) {} setStatus(false); },
-    get connected() { return connected; },
+    init() { requestAccess(); },
+    requestAccess,                    // user-triggered retry
+    chooseOutput,
+    get connected() { return !!currentOutput; },
+    get supported() { return supported; },
+    get permission() { return permissionState; },
+    get outputs() { return listOutputs(); },
+    get selectedId() { return currentOutputId; },
     onStatus(fn) { listeners.add(fn); },
     fingerDown(pid, pitchFloat, yNorm) {
       const ch = takeChannel();
@@ -1590,23 +1650,54 @@ const Hud = (() => {
     onChange: v => {
       State.setMode(v);
       updateModeBtn();
-      if (!State.usesMidiOut) MidiOut.disconnect();
     },
   });
 
-  const addrInput = document.getElementById('bridgeAddr');
-  document.getElementById('midiConnect').addEventListener('click', () => {
-    if (MidiOut.connected) MidiOut.disconnect();
-    else MidiOut.connect(addrInput.value.trim());
-  });
+  // device picker — rebuilt on every status update
+  let midiDeviceDd = null;
+  function buildDeviceDd(outputs, selectedId) {
+    const opts = outputs.length
+      ? outputs.map(o => ({ value: o.id, label: o.name }))
+      : [{ value: '', label: 'no devices found', disabled: true }];
+    if (midiDeviceDd) {
+      midiDeviceDd.setOptions(opts);
+      midiDeviceDd.setValue(selectedId || (opts[0] && opts[0].value) || '');
+    } else {
+      midiDeviceDd = Dropdown.make('midiDeviceDd', {
+        value: selectedId || '',
+        options: opts,
+        onChange: id => {
+          MidiOut.chooseOutput(id);
+          try { localStorage.setItem('glissando.midiDevice', id); } catch(_){}
+        },
+      });
+    }
+  }
+  buildDeviceDd([], '');
+
+  document.getElementById('midiRetry').addEventListener('click', () => MidiOut.requestAccess());
+
   const midiDot = document.getElementById('midiDot');
   const midiStatus = document.getElementById('midiStatus');
-  MidiOut.onStatus((c) => {
-    midiDot.classList.toggle('connected', c);
-    midiStatus.textContent = c ? 'connected' : 'disconnected';
-    document.getElementById('midiConnect').textContent = c ? 'disconnect' : 'connect';
+
+  MidiOut.onStatus((s) => {
+    midiDot.classList.toggle('connected', !!s.connected);
+    if (!s.supported) {
+      midiStatus.textContent = 'web midi not supported in this browser';
+    } else if (s.permission !== 'granted') {
+      midiStatus.textContent = 'tap retry to enable midi';
+    } else if (s.outputs.length === 0) {
+      midiStatus.textContent = 'no midi devices found';
+    } else if (s.connected) {
+      const sel = s.outputs.find(o => o.id === s.selectedId);
+      midiStatus.textContent = 'connected · ' + (sel ? sel.name : 'unknown');
+    } else {
+      midiStatus.textContent = 'pick a device';
+    }
+    buildDeviceDd(s.outputs, s.selectedId);
     updateModeBtn();
   });
+
   function updateModeBtn() {
     const mode = State.mode;
     modeBtn.classList.remove('mode-local', 'mode-midi', 'mode-both', 'no-conn');
@@ -1872,11 +1963,27 @@ const Controller = (() => {
    BOOT
 ============================================================================ */
 GridView.build();
+
+// Restore last-used MIDI device after the user grants permission.
+let _restoreId = null;
+try { _restoreId = localStorage.getItem('glissando.midiDevice'); } catch(_){}
+if (_restoreId) {
+  MidiOut.onStatus(function once(s) {
+    if (s.permission === 'granted' && s.outputs.length) {
+      const exists = s.outputs.find(o => o.id === _restoreId);
+      if (exists) MidiOut.chooseOutput(_restoreId);
+      _restoreId = null;   // don't re-apply
+    }
+  });
+}
+
 document.getElementById('gateBtn').addEventListener('click', async () => {
   document.getElementById('gate').style.display = 'none';
   try { await screen.orientation.lock('landscape'); } catch(_){}
   try { await navigator.wakeLock.request('screen'); } catch(_){}
   Controller.start();
+  // Now that we have a user gesture, kick off Web MIDI permission request.
+  MidiOut.init();
 });
 </script>
 </body>
