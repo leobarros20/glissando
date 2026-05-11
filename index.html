@@ -20,10 +20,10 @@
 
   :root {
     --top-bar-h: 50px;
-    --bot-bar-h: 38px;
+    --bot-bar-h: 56px;
   }
 
-  /* GRID */
+  /* ===================== GRID ===================== */
   #gridLayer {
     position: absolute;
     top: var(--top-bar-h); bottom: var(--bot-bar-h);
@@ -32,79 +32,68 @@
     z-index: 1;
     overflow: hidden;
   }
-  .note-line {
+  /* SVG wrap is much wider now to accommodate full-distance bend */
+  .note-line-wrap {
     position: absolute;
     top: 22px; bottom: 0;
-    width: 1px;
-    background: rgba(180,200,230,0.32);
-    transform: translateX(-0.5px);
+    width: 1200px;
+    transform: translateX(-600px);
     pointer-events: none;
-    transition: background 60ms linear, width 60ms linear, box-shadow 60ms linear;
   }
-  .note-line.tonic {
-    background: rgba(150,200,255,0.70);
-    width: 1.5px;
+  .note-line-wrap svg {
+    width: 100%; height: 100%;
+    overflow: visible;
   }
-  .note-line.near {
-    background: rgba(var(--fb-r,150), var(--fb-g,200), var(--fb-b,255), var(--fb-a, 0.7));
-    width: calc(2px + var(--fb-thick, 0px));
-    box-shadow:
-      0 0 var(--fb-glow, 6px) rgba(var(--fb-r,150), var(--fb-g,200), var(--fb-b,255), var(--fb-shadow, 0.5)),
-      0 0 calc(var(--fb-glow, 6px) * 2) rgba(var(--fb-r,150), var(--fb-g,200), var(--fb-b,255), calc(var(--fb-shadow, 0.5) * 0.4));
+  .note-line-path {
+    fill: none;
+    stroke: rgba(180,200,230,0.32);
+    stroke-width: 1;
+    transition: stroke 60ms linear, stroke-width 60ms linear, filter 60ms linear;
   }
-  /* Wiggle. --tremor-r / --tremor-l are the rightward/leftward amplitudes.
-     They are set independently so the wiggle can be biased to one side
-     (the side of the target note) — creating a "liquid bend" effect. */
-  .note-line.tremble {
-    animation: tremble var(--tremor-speed, 70ms) infinite linear;
+  .note-line-wrap.tonic .note-line-path {
+    stroke: rgba(150,200,255,0.70);
+    stroke-width: 1.5;
   }
-  @keyframes tremble {
-    0%   { transform: translateX(calc(-0.5px + var(--tremor-r, 0px))); }
-    25%  { transform: translateX(calc(-0.5px - var(--tremor-l, 0px))); }
-    50%  { transform: translateX(calc(-0.5px + var(--tremor-r, 0px) * 0.4)); }
-    75%  { transform: translateX(calc(-0.5px - var(--tremor-l, 0px))); }
-    100% { transform: translateX(calc(-0.5px + var(--tremor-r, 0px))); }
+  .note-line-wrap.near .note-line-path {
+    stroke: rgba(var(--fb-r,150), var(--fb-g,200), var(--fb-b,255), var(--fb-a, 0.7));
+    stroke-width: calc(2 + var(--fb-thick, 0));
+    filter:
+      drop-shadow(0 0 var(--fb-glow, 6px) rgba(var(--fb-r,150), var(--fb-g,200), var(--fb-b,255), var(--fb-shadow, 0.5)))
+      drop-shadow(0 0 calc(var(--fb-glow, 6px) * 1.6) rgba(var(--fb-r,150), var(--fb-g,200), var(--fb-b,255), calc(var(--fb-shadow, 0.5) * 0.4)));
   }
-  .note-line.in-tune {
-    background: rgba(255, 255, 255, 1);
-    width: 5px;
-    box-shadow:
-      0 0 20px rgba(255, 255, 255, 0.95),
-      0 0 40px rgba(220, 235, 255, 0.6),
-      0 0 70px rgba(180, 220, 255, 0.3);
+  .note-line-wrap.in-tune .note-line-path {
+    stroke: rgba(255,255,255,1);
+    stroke-width: 5;
+    filter:
+      drop-shadow(0 0 20px rgba(255,255,255,0.95))
+      drop-shadow(0 0 40px rgba(220,235,255,0.6))
+      drop-shadow(0 0 70px rgba(180,220,255,0.3));
     animation: inTunePulse 1100ms infinite ease-in-out;
   }
   @keyframes inTunePulse {
-    0%, 100% {
-      box-shadow:
-        0 0 20px rgba(255, 255, 255, 0.95),
-        0 0 40px rgba(220, 235, 255, 0.6),
-        0 0 70px rgba(180, 220, 255, 0.3);
-    }
-    50% {
-      box-shadow:
-        0 0 30px rgba(255, 255, 255, 1),
-        0 0 60px rgba(230, 240, 255, 0.7),
-        0 0 100px rgba(200, 230, 255, 0.4);
-    }
+    0%, 100% { opacity: 0.9; }
+    50%      { opacity: 1; }
   }
-  .note-line.snap-locked {
-    background: rgba(255, 255, 255, 1);
-    width: 5px;
-    box-shadow:
-      0 0 20px rgba(255, 255, 255, 0.95),
-      0 0 40px rgba(220, 235, 255, 0.5);
+  .note-line-wrap.snap-locked .note-line-path {
+    stroke: rgba(255,255,255,1);
+    stroke-width: 5;
+    filter: drop-shadow(0 0 20px rgba(255,255,255,0.95))
+            drop-shadow(0 0 40px rgba(220,235,255,0.5));
   }
 
-  /* HINT GRADIENT — fades in/out smoothly */
+  /* HINT GRADIENT — radial-based for soft edges on both sides, with vertical fade at top */
   .hint-gradient {
     position: absolute;
-    top: 22px; bottom: 0;
+    top: 0; bottom: 0;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 130ms ease-out, background 80ms linear;
-    will-change: opacity, width, left;
+    transition: opacity 140ms ease-out;
+    will-change: opacity, width, left, background;
+    mix-blend-mode: screen;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 22px, #000 60px, #000 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 22px, #000 60px, #000 100%);
   }
+  .hint-gradient.visible { opacity: 1; }
 
   .note-glow {
     position: absolute;
@@ -177,11 +166,11 @@
     background: transparent;
   }
 
-  /* TOP BAR */
+  /* ===================== TOP BAR ===================== */
   #bar {
     position: fixed; top: 0; left: 0; right: 0;
     height: var(--top-bar-h);
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 14px;
     padding: 0 12px;
     background: linear-gradient(to bottom, rgba(10,13,18,.95), rgba(10,13,18,.6));
     border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -191,6 +180,12 @@
   #bar > * { pointer-events: auto; }
   .label-ui { color: #7a8290; font-size: 10px; }
   .group { display: flex; align-items: center; gap: 5px; }
+
+  .module {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 2px;
+  }
+  .module + .module { border-left: 1px solid rgba(255,255,255,0.08); padding-left: 14px; }
 
   /* CUSTOM DROPDOWN */
   .dd {
@@ -211,11 +206,9 @@
     transition: background .12s, border-color .12s;
   }
   .dd-button::after {
-    content: '';
-    position: absolute;
+    content: ''; position: absolute;
     right: 10px; top: 50%;
-    width: 0; height: 0;
-    margin-top: -2px;
+    width: 0; height: 0; margin-top: -2px;
     border-left: 4px solid transparent;
     border-right: 4px solid transparent;
     border-top: 5px solid #cfd3da;
@@ -241,6 +234,7 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
+  .dd-menu.dd-up { top: auto; bottom: calc(100% + 4px); }
   .dd-menu.open { display: block; }
   .dd-option {
     padding: 6px 14px;
@@ -269,40 +263,122 @@
     border-color: rgba(120,200,255,.4); color: #fff;
   }
 
-  .oct-btn {
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.12);
+  /* SEGMENTED CONTROLS — used for both span and snap and octave */
+  .seg-control {
+    display: inline-flex;
+    align-items: stretch;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
     border-radius: 999px;
-    width: 36px; height: 28px;
-    color: #e6e8ec;
-    font: 600 14px ui-monospace, monospace;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background .12s;
+    padding: 2px;
+    position: relative;
+    font: 11px ui-monospace, monospace;
+    letter-spacing: .08em; text-transform: uppercase;
+    overflow: hidden;
+    height: 28px;
   }
-  .oct-btn:hover { background: rgba(255,255,255,.12); }
-  .oct-btn:active { background: rgba(120,200,255,.22); }
-  .oct-display {
-    color: #7a8290; font-size: 10px;
-    padding: 0 4px;
-    min-width: 36px; text-align: center;
+  .seg-opt {
+    padding: 0 10px;
+    color: #7a8290;
+    cursor: pointer;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    border-radius: 999px;
+    z-index: 1;
+    transition: color .14s;
+    min-width: 26px;
+    text-align: center;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .seg-opt.on {
+    background: rgba(120,200,255,.22);
+    color: #fff;
+  }
+  /* center label (non-clickable) */
+  .seg-label {
+    padding: 0 8px;
+    color: #cfd3da;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 1;
+    font-size: 10px;
+    letter-spacing: .14em;
+    display: inline-flex; align-items: center;
+  }
+
+  /* SPAN toggle — special: the whole control toggles, with sliding pill background */
+  .span-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 999px;
+    padding: 2px;
+    position: relative;
+    font: 11px ui-monospace, monospace;
+    letter-spacing: .08em; text-transform: uppercase;
+    cursor: pointer;
+    height: 28px;
+    overflow: hidden;
+    transition: border-color .14s;
+  }
+  .span-toggle:hover { border-color: rgba(120,200,255,.3); }
+  .span-toggle .span-side {
+    padding: 0 10px;
+    color: #7a8290;
+    font: inherit;
+    z-index: 1;
+    pointer-events: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 28px;
+    transition: color .14s;
+    position: relative;
+    border-radius: 999px;
+  }
+  /* the highlight pill sits behind the active side */
+  .span-toggle .span-side::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(120,200,255,.22);
+    border-radius: 999px;
+    opacity: 0;
+    transition: opacity .25s;
+    z-index: -1;
+  }
+  .span-toggle[data-val="1"] .span-side.left::before  { opacity: 1; }
+  .span-toggle[data-val="2"] .span-side.right::before { opacity: 1; }
+  .span-toggle[data-val="1"] .span-side.left  { color: #fff; }
+  .span-toggle[data-val="2"] .span-side.right { color: #fff; }
+  .span-toggle .span-center {
+    padding: 0 8px;
+    color: #cfd3da;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 1;
+    font-size: 10px;
+    letter-spacing: .14em;
+    display: inline-flex; align-items: center;
   }
 
   .spacer { flex: 1; }
 
+  /* MIDI panel */
   #midiPanel {
     position: fixed;
-    top: var(--top-bar-h); right: 12px;
+    bottom: var(--bot-bar-h); right: 12px;
     background: rgba(15, 19, 26, 0.97);
     border: 1px solid rgba(255,255,255,0.10);
     border-radius: 10px;
     padding: 14px 14px 12px;
     z-index: 9;
-    width: 320px;
+    width: 340px;
     display: none;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.5);
+    margin-bottom: 8px;
   }
   #midiPanel.open { display: block; }
   #midiPanel h3 {
@@ -319,7 +395,7 @@
     flex-shrink: 0;
     font-size: 10px; letter-spacing: .08em;
     text-transform: uppercase; color: #7a8290;
-    min-width: 50px;
+    min-width: 70px;
   }
   #midiPanel input[type="text"] {
     flex: 1;
@@ -347,7 +423,7 @@
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid rgba(255,255,255,0.06);
-    font-size: 10px; line-height: 1.4;
+    font-size: 10px; line-height: 1.5;
     color: #6a7280;
   }
   #midiPanel .help code {
@@ -372,35 +448,38 @@
   .pill.mode-indicator.mode-both::before { background: #ffd166; }
   .pill.mode-indicator.no-conn::before { background: #b34747; }
 
+  /* ===================== BOTTOM BAR ===================== */
   #botBar {
     position: fixed; bottom: 0; left: 0; right: 0;
     height: var(--bot-bar-h);
-    display: flex; align-items: center;
+    display: flex; align-items: center; gap: 12px;
     padding: 0 12px;
     background: linear-gradient(to top, rgba(10,13,18,.95), rgba(10,13,18,.6));
     border-top: 1px solid rgba(255,255,255,0.05);
     z-index: 5;
     pointer-events: none;
   }
+  #botBar > * { pointer-events: auto; }
   #fingerRow {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    flex: 1;
-    height: 100%;
-    align-items: center;
+    gap: 4px;
+    width: 520px;
+    flex-shrink: 0;
+    height: 36px;
   }
   .finger-slot {
     border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 6px;
-    padding: 4px 8px;
+    border-radius: 5px;
+    padding: 0 6px;
     background: rgba(255,255,255,0.02);
-    font: 11px ui-monospace, monospace;
+    font: 10px ui-monospace, monospace;
     color: rgba(180,200,230,0.55);
     transition: border-color 0.2s, background 0.2s;
     min-width: 0;
-    height: 26px;
-    display: flex; align-items: center; gap: 8px;
+    height: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 1px;
     overflow: hidden;
     white-space: nowrap;
   }
@@ -408,26 +487,34 @@
     color: rgba(180,200,230,0.18);
     background: rgba(255,255,255,0.01);
   }
+  .finger-slot .top-row {
+    display: flex; align-items: baseline; gap: 4px;
+    line-height: 1;
+  }
   .finger-slot .num {
-    font-size: 9px; letter-spacing: .12em;
+    font-size: 8px; letter-spacing: .15em;
     text-transform: uppercase;
     color: rgba(150,170,200,0.55);
-    flex-shrink: 0;
   }
   .finger-slot .name {
     font-weight: 600; font-size: 12px;
     color: var(--slot-color, rgba(220,235,255,0.95));
-    flex-shrink: 0;
   }
   .finger-slot .cents {
     color: rgba(180,200,230,0.5);
-    flex-shrink: 0; font-size: 10px;
-    min-width: 38px;
+    font-size: 9px;
+    margin-left: auto;
   }
   .finger-slot .hz {
     color: rgba(180,200,230,0.55);
-    font-size: 10px;
-    margin-left: auto;
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  #botSettings {
+    display: flex; align-items: center; gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
   }
 
   #gate {
@@ -465,46 +552,78 @@
   <canvas id="touchLayer"></canvas>
 </div>
 
+<!-- TOP BAR: modifiers (musical) -->
 <div id="bar">
-  <button class="oct-btn" id="octDown" title="octave down">−</button>
-  <span class="oct-display" id="octDisp">oct 4</span>
-  <div class="spacer"></div>
+  <div class="module">
+    <!-- octave segmented control with arrows on the sides -->
+    <div class="seg-control" id="octSeg">
+      <button class="seg-opt" data-dir="-1">◀</button>
+      <span class="seg-label">octave <span id="octDispNum">4</span></span>
+      <button class="seg-opt" data-dir="1">▶</button>
+    </div>
+  </div>
+  <div class="module">
+    <!-- span sliding toggle: clicking anywhere flips it -->
+    <div class="span-toggle" id="spanToggle" data-val="2">
+      <span class="span-side left">1</span>
+      <span class="span-center">octaves</span>
+      <span class="span-side right">2</span>
+    </div>
+  </div>
 
-  <div class="group">
-    <span class="label-ui">root</span>
-    <div class="dd" id="rootDd"></div>
+  <div class="module">
+    <div class="group">
+      <span class="label-ui">root</span>
+      <div class="dd" id="rootDd"></div>
+    </div>
+    <div class="group">
+      <span class="label-ui">scale</span>
+      <div class="dd" id="typeDd"></div>
+    </div>
   </div>
-  <div class="group">
-    <span class="label-ui">scale</span>
-    <div class="dd" id="typeDd"></div>
+
+  <!-- snap type segmented -->
+  <div class="module">
+    <span class="label-ui">snap</span>
+    <div class="seg-control" id="snapSeg">
+      <button class="seg-opt on" data-val="off">free</button>
+      <button class="seg-opt" data-val="soft">pull</button>
+      <button class="seg-opt" data-val="hard">lock</button>
+    </div>
   </div>
-  <div class="group">
-    <span class="label-ui">y top</span>
-    <div class="dd" id="yTopDd"></div>
-  </div>
-  <div class="group">
-    <span class="label-ui">y bot</span>
-    <div class="dd" id="yBotDd"></div>
-  </div>
-  <button class="pill" id="snap">snap</button>
-  <button class="pill" id="hold">hold</button>
-  <button class="pill" id="magnet">magnet</button>
-  <button class="pill" id="span">2 oct</button>
-  <button class="pill mode-indicator" id="modeBtn">local</button>
 
   <div class="spacer"></div>
-  <button class="pill" id="panic">panic</button>
-  <button class="oct-btn" id="octUp" title="octave up">+</button>
+</div>
+
+<!-- BOTTOM BAR: finger readouts (left) + settings (right) -->
+<div id="botBar">
+  <div id="fingerRow"></div>
+  <div id="botSettings">
+    <div class="module">
+      <div class="group">
+        <span class="label-ui">slide ↑</span>
+        <div class="dd" id="yTopDd"></div>
+      </div>
+      <div class="group">
+        <span class="label-ui">slide ↓</span>
+        <div class="dd" id="yBotDd"></div>
+      </div>
+    </div>
+    <div class="module">
+      <button class="pill mode-indicator" id="modeBtn">output: synth</button>
+      <button class="pill" id="panic">panic</button>
+    </div>
+  </div>
 </div>
 
 <div id="midiPanel">
-  <h3>midi connection</h3>
+  <h3>output destination</h3>
   <div class="row">
-    <label>mode</label>
+    <label>where to</label>
     <div class="dd" id="modeDd" style="flex:1"></div>
   </div>
   <div class="row">
-    <label>bridge</label>
+    <label>bridge url</label>
     <input type="text" id="bridgeAddr" value="ws://localhost:8080" spellcheck="false" autocapitalize="off" autocomplete="off">
   </div>
   <div class="row">
@@ -516,12 +635,10 @@
     <button class="pill" id="midiConnect">connect</button>
   </div>
   <div class="help">
-    Run <code>node bridge.js</code> on your laptop, set the bridge URL to your laptop's LAN IP, enable Glissando in Ableton's MIDI prefs, arm an MPE-enabled track.
+    <strong>synth</strong> plays sound inside the browser.<br>
+    <strong>midi</strong> sends MPE messages to a DAW like Ableton — run <code>node bridge.js</code> on your laptop first.<br>
+    <strong>both</strong> plays the browser synth and sends MIDI simultaneously.
   </div>
-</div>
-
-<div id="botBar">
-  <div id="fingerRow"></div>
 </div>
 
 <div id="gate">
@@ -545,6 +662,7 @@ const Dropdown = (() => {
   function closeMenu() {
     if (!openMenu) return;
     openMenu.classList.remove('open');
+    openMenu.classList.remove('dd-up');
     openMenu._button.classList.remove('open');
     openMenu = null;
   }
@@ -582,6 +700,9 @@ const Dropdown = (() => {
       e.stopPropagation();
       if (openMenu === menu) { closeMenu(); return; }
       closeMenu();
+      const rect = btn.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      menu.classList.toggle('dd-up', spaceBelow < 240);
       menu.classList.add('open');
       btn.classList.add('open');
       openMenu = menu;
@@ -598,7 +719,7 @@ const Dropdown = (() => {
 
 
 /* ============================================================================
-   STATE — all scales normalized to 2 octaves (steps only, octaves applied via spanOct)
+   STATE
 ============================================================================ */
 const State = (() => {
   const SCALE_TYPES = [
@@ -637,13 +758,13 @@ const State = (() => {
     if (top.inverse === bot.id || bot.inverse === top.id) return false;
     return true;
   }
-
   const s = {
     rootIdx: 0, typeIdx: 0,
     octave: 4,
-    spanOct: 2,          // 1 or 2 — how many octaves fit across the screen
+    spanOct: 2,
     yTopId: 'filter_open', yBotId: 'reverb',
-    snap: false, hold: false, magnet: true,
+    snapMode: 'off',        // 'off' | 'soft' | 'hard'
+    hold: false,
     mode: 'local',
     notes: [],
     listeners: new Set(),
@@ -656,12 +777,11 @@ const State = (() => {
     for (let o = 0; o < s.spanOct; o++) {
       for (const step of t.steps) ns.push(rootMidi + o*12 + step);
     }
-    ns.push(rootMidi + s.spanOct*12);   // top tonic
+    ns.push(rootMidi + s.spanOct*12);
     s.notes = ns;
   }
   function notify(evt) { for (const l of s.listeners) l(evt); }
   buildNotes();
-
   return {
     SCALE_TYPES, Y_EFFECTS, NOTE_NAMES, compat,
     get rootIdx() { return s.rootIdx; },
@@ -673,9 +793,10 @@ const State = (() => {
     get yBotId() { return s.yBotId; },
     get yTop() { return Y_EFFECTS.find(e => e.id === s.yTopId); },
     get yBot() { return Y_EFFECTS.find(e => e.id === s.yBotId); },
-    get snap() { return s.snap; },
+    get snapMode() { return s.snapMode; },
+    get isHardSnap() { return s.snapMode === 'hard'; },
+    get isSoftSnap() { return s.snapMode === 'soft'; },
     get hold() { return s.hold; },
-    get magnet() { return s.magnet; },
     get mode() { return s.mode; },
     get notes() { return s.notes; },
     get pad() { return s.pad; },
@@ -687,12 +808,10 @@ const State = (() => {
     setSpan(n)    { s.spanOct = (n === 1 ? 1 : 2); buildNotes(); notify('scale'); },
     setYTop(id)   { s.yTopId = id; if (!compat(id, s.yBotId)) s.yBotId = 'off'; notify('y'); },
     setYBot(id)   { s.yBotId = id; notify('y'); },
-    setSnap(v)    { s.snap = v; notify('snap'); },
+    setSnapMode(m){ s.snapMode = m; notify('snap'); },
     setHold(v)    { s.hold = v; notify('hold'); },
-    setMagnet(v)  { s.magnet = v; notify('magnet'); },
     setMode(m)    { s.mode = m; notify('mode'); },
     on(fn)        { s.listeners.add(fn); },
-
     midiHz(m)      { return 440 * Math.pow(2, (m - 69) / 12); },
     noteName(midi) { return NOTE_NAMES[((Math.round(midi) % 12) + 12) % 12]; },
     noteFull(midi) { return NOTE_NAMES[((Math.round(midi) % 12) + 12) % 12] + (Math.floor(Math.round(midi)/12) - 1); },
@@ -712,7 +831,7 @@ const State = (() => {
       const padPx = W * s.pad;
       const playable = W - 2 * padPx;
       const t = Math.max(0, Math.min(1, (x - padPx) / playable));
-      if (s.snap) return s.notes[Math.round(t * slots)];
+      if (s.snapMode === 'hard') return s.notes[Math.round(t * slots)];
       const pos = t * slots;
       const i = Math.floor(pos);
       const frac = pos - i;
@@ -725,11 +844,10 @@ const State = (() => {
 
 
 /* ============================================================================
-   AUDIO
+   AUDIO  (unchanged)
 ============================================================================ */
 const Audio = (() => {
-  let actx = null, masterGain;
-  let dryBus, reverbBus, delayBus;
+  let actx = null, masterGain, dryBus, reverbBus, delayBus;
   function buildReverb() {
     const input = actx.createGain();
     const wet = actx.createGain(); wet.gain.value = 0.5;
@@ -758,8 +876,7 @@ const Audio = (() => {
   }
   function makeDriveCurve(amount) {
     const k = amount * 50;
-    const n = 256;
-    const curve = new Float32Array(n);
+    const n = 256; const curve = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const x = (i * 2) / n - 1;
       curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
@@ -873,7 +990,7 @@ const Audio = (() => {
 
 
 /* ============================================================================
-   MIDIOUT
+   MIDIOUT (unchanged)
 ============================================================================ */
 const MidiOut = (() => {
   const MEMBER_CHANNELS = [1, 2, 3, 4, 5];
@@ -989,9 +1106,6 @@ const MidiOut = (() => {
 })();
 
 
-/* ============================================================================
-   PALETTE — aurora
-============================================================================ */
 function auroraColor(absCents) {
   const stops = [
     [0,   [120, 230, 255]],
@@ -1025,9 +1139,13 @@ const GridView = (() => {
   let magnetEls = [];
   const hintPool = new Map();
 
-  // thresholds tuned for "dead zone" + obvious-when-needed
-  const HINT_DEAD_CENTS = 8;     // under this — no gradient, only line feedback
-  const TREMBLE_THRESHOLD = 8;   // align with hint trigger so both appear together
+  const DEAD_CENTS = 12;
+  const HINT_THRESHOLD = 8;
+  const SVG_WRAP_WIDTH = 1200;     // px — must match CSS .note-line-wrap width
+  const SVG_CENTER = SVG_WRAP_WIDTH / 2;
+
+  // wiggle state — animated separately from bend
+  let wiggleTime = 0;
 
   function build() {
     const notes = State.notes;
@@ -1052,10 +1170,13 @@ const GridView = (() => {
         glow.className = 'note-glow'; glow.style.left = left;
         frag.appendChild(glow);
       }
-      const line = document.createElement('div');
-      line.className = 'note-line' + (tonic ? ' tonic' : '');
-      line.style.left = left;
-      frag.appendChild(line);
+      const wrap = document.createElement('div');
+      wrap.className = 'note-line-wrap' + (tonic ? ' tonic' : '');
+      wrap.style.left = left;
+      // viewBox X is 0..SVG_WRAP_WIDTH, midpoint 300
+      wrap.innerHTML = `<svg viewBox="0 0 ${SVG_WRAP_WIDTH} 1000" preserveAspectRatio="none"><path class="note-line-path" d="M ${SVG_CENTER} 0 Q ${SVG_CENTER} 500 ${SVG_CENTER} 1000"/></svg>`;
+      frag.appendChild(wrap);
+      const path = wrap.querySelector('.note-line-path');
 
       const label = document.createElement('div');
       label.className = 'note-label' + (tonic ? ' tonic' : '');
@@ -1063,7 +1184,8 @@ const GridView = (() => {
       label.textContent = tonic ? State.noteFull(note) : State.noteName(note);
       frag.appendChild(label);
 
-      lineEls.push({ el: line, labelEl: label, midi: note, pctNum, tonic, fifth });
+      lineEls.push({ wrap, path, label, midi: note, pctNum, tonic, fifth,
+                     bendPx: 0, bendYFrac: 0.5, wiggleAmp: 0, wiggleSpeed: 70 });
 
       if (tonic || fifth) {
         const ring = document.createElement('div');
@@ -1076,32 +1198,50 @@ const GridView = (() => {
     container.replaceChildren(frag);
   }
 
-  /* near map: midi -> { intensity, cents, biasSide ('L'|'R'|null) }
-     biasSide tells the wiggle which direction to lean toward — the side
-     where the *next* on-key note is (i.e. the side you'd move toward). */
+  /* set the SVG path d-attribute based on stored bend + animated wiggle */
+  function applyBendAndWiggle(item, now) {
+    const totalBend = item.bendPx + (item.wiggleAmp > 0
+      ? Math.sin(now / item.wiggleSpeed) * item.wiggleAmp
+      : 0);
+    if (Math.abs(totalBend) < 0.1) {
+      item.path.setAttribute('d', `M ${SVG_CENTER} 0 Q ${SVG_CENTER} 500 ${SVG_CENTER} 1000`);
+      return;
+    }
+    // Midpoint deflection = (ctrlX - SVG_CENTER) / 2. To get D pixels at midpoint, ctrlX = SVG_CENTER + 2*D.
+    const ctrlX = SVG_CENTER + totalBend * 2;
+    const ctrlY = Math.max(0, Math.min(1000, item.bendYFrac * 1000));
+    item.path.setAttribute('d', `M ${SVG_CENTER} 0 Q ${ctrlX} ${ctrlY} ${SVG_CENTER} 1000`);
+  }
+
+  /* near map: midi -> { intensity, cents, bendPx, bendYFrac, wiggleAmp, wiggleSpeed } */
   let prev = new Set();
-  function highlightNear(map) {
+  function highlightNear(map, now) {
     const next = new Set();
-    const snapOn = State.snap;
+    const snapOn = State.isHardSnap;
 
     for (const item of lineEls) {
       const data = map.get(item.midi);
-      if (!data) continue;
-      const { intensity, cents, biasSide } = data;
+      if (!data) {
+        // reset bend/wiggle when leaving near
+        item.bendPx = 0; item.wiggleAmp = 0;
+        continue;
+      }
+      const { intensity, cents, bendPx, bendYFrac, wiggleAmp, wiggleSpeed } = data;
       const absCents = Math.abs(cents);
 
       if (absCents <= 3) {
         if (intensity > 0.4) {
-          item.el.classList.remove('near', 'tremble');
-          item.labelEl.classList.remove('near');
+          item.bendPx = 0; item.wiggleAmp = 0;
+          item.wrap.classList.remove('near');
+          item.label.classList.remove('near');
           if (snapOn) {
-            item.el.classList.remove('in-tune');
-            item.el.classList.add('snap-locked');
-            item.labelEl.classList.add('snap-locked');
+            item.wrap.classList.remove('in-tune');
+            item.wrap.classList.add('snap-locked');
+            item.label.classList.add('snap-locked');
           } else {
-            item.el.classList.remove('snap-locked');
-            item.el.classList.add('in-tune');
-            item.labelEl.classList.add('in-tune');
+            item.wrap.classList.remove('snap-locked');
+            item.wrap.classList.add('in-tune');
+            item.label.classList.add('in-tune');
           }
           next.add(item.midi);
           continue;
@@ -1109,8 +1249,8 @@ const GridView = (() => {
       }
 
       if (intensity > 0.05) {
-        item.el.classList.remove('in-tune', 'snap-locked');
-        item.labelEl.classList.remove('in-tune', 'snap-locked');
+        item.wrap.classList.remove('in-tune', 'snap-locked');
+        item.label.classList.remove('in-tune', 'snap-locked');
         let r, g, b;
         if (snapOn) { r = 220; g = 230; b = 245; }
         else        { [r, g, b] = auroraColor(absCents); }
@@ -1118,71 +1258,64 @@ const GridView = (() => {
         const thick = intensity * 3;
         const glow = 6 + intensity * 24;
         const shadow = 0.4 + intensity * 0.6;
+        item.wrap.style.setProperty('--fb-r', r);
+        item.wrap.style.setProperty('--fb-g', g);
+        item.wrap.style.setProperty('--fb-b', b);
+        item.wrap.style.setProperty('--fb-a', bright);
+        item.wrap.style.setProperty('--fb-thick', thick);
+        item.wrap.style.setProperty('--fb-glow', glow + 'px');
+        item.wrap.style.setProperty('--fb-shadow', shadow);
+        item.label.style.setProperty('--fb-r', r);
+        item.label.style.setProperty('--fb-g', g);
+        item.label.style.setProperty('--fb-b', b);
+        item.wrap.classList.add('near');
+        item.label.classList.add('near');
 
-        // DIRECTIONAL TREMBLE — bias amplitude toward target side
-        let tremorR = 0, tremorL = 0;
-        let tremorSpeed = 70;
-        if (!snapOn && absCents > TREMBLE_THRESHOLD) {
-          const baseTremor = Math.min(7, (absCents - TREMBLE_THRESHOLD) / 22 * 7);
-          tremorSpeed = Math.max(45, 90 - absCents);
-          if (biasSide === 'L') {
-            // target is to the LEFT — wiggle leans left
-            tremorL = baseTremor * 1.6;
-            tremorR = baseTremor * 0.4;
-          } else if (biasSide === 'R') {
-            tremorR = baseTremor * 1.6;
-            tremorL = baseTremor * 0.4;
-          } else {
-            tremorR = tremorL = baseTremor;
-          }
+        if (!snapOn) {
+          item.bendPx = bendPx;
+          item.bendYFrac = bendYFrac;
+          item.wiggleAmp = wiggleAmp;
+          item.wiggleSpeed = wiggleSpeed;
+        } else {
+          item.bendPx = 0; item.wiggleAmp = 0;
         }
-
-        item.el.style.setProperty('--fb-r', r);
-        item.el.style.setProperty('--fb-g', g);
-        item.el.style.setProperty('--fb-b', b);
-        item.el.style.setProperty('--fb-a', bright);
-        item.el.style.setProperty('--fb-thick', thick + 'px');
-        item.el.style.setProperty('--fb-glow', glow + 'px');
-        item.el.style.setProperty('--fb-shadow', shadow);
-        item.el.style.setProperty('--tremor-r', tremorR + 'px');
-        item.el.style.setProperty('--tremor-l', tremorL + 'px');
-        item.el.style.setProperty('--tremor-speed', tremorSpeed + 'ms');
-        item.labelEl.style.setProperty('--fb-r', r);
-        item.labelEl.style.setProperty('--fb-g', g);
-        item.labelEl.style.setProperty('--fb-b', b);
-        item.el.classList.add('near');
-        item.labelEl.classList.add('near');
-        if ((tremorR + tremorL) > 0.1) item.el.classList.add('tremble');
-        else item.el.classList.remove('tremble');
         next.add(item.midi);
+      } else {
+        item.bendPx = 0; item.wiggleAmp = 0;
       }
     }
     for (const m of prev) {
       if (!next.has(m)) {
         const item = lineEls.find(l => l.midi === m);
         if (item) {
-          item.el.classList.remove('near', 'tremble', 'in-tune', 'snap-locked');
-          item.labelEl.classList.remove('near', 'in-tune', 'snap-locked');
+          item.wrap.classList.remove('near', 'in-tune', 'snap-locked');
+          item.label.classList.remove('near', 'in-tune', 'snap-locked');
+          item.bendPx = 0; item.wiggleAmp = 0;
         }
       }
     }
     prev = next;
+
+    // apply bend+wiggle to all lines (wiggle is time-based so this must run each frame)
+    for (const item of lineEls) applyBendAndWiggle(item, now);
   }
 
-  /* hints: Map<pid -> { targetPct, fingerPct, cents }> */
+  /* Build the soft-edge gradient using a radial-ellipse on the line side,
+     fading to transparent on the finger side.
+     We achieve "no hard edge at the line" by using a radial gradient anchored
+     at the line edge instead of a linear gradient stop at full alpha. */
   function updateHints(hints) {
-    // remove stale finger gradients
     for (const [pid, el] of hintPool) {
       if (!hints.has(pid)) {
-        // smooth fade-out, then remove
-        el.style.opacity = '0';
-        setTimeout(() => { el.remove(); }, 200);
+        el.classList.remove('visible');
+        setTimeout(() => { if (el && el.parentNode) el.remove(); }, 200);
         hintPool.delete(pid);
       }
     }
     for (const [pid, h] of hints) {
       let el = hintPool.get(pid);
-      if (!el) {
+      const isNew = !el;
+      if (isNew) {
         el = document.createElement('div');
         el.className = 'hint-gradient';
         hintLayer.appendChild(el);
@@ -1191,43 +1324,54 @@ const GridView = (() => {
       const { targetPct, fingerPct, cents } = h;
       const absCents = Math.abs(cents);
 
-      // dead zone — close to a note: no gradient
-      if (absCents < HINT_DEAD_CENTS) {
-        el.style.opacity = '0';
+      if (absCents < HINT_THRESHOLD) {
+        el.classList.remove('visible');
         continue;
       }
 
       const goingRight = fingerPct > targetPct;
       const widthPct = Math.abs(fingerPct - targetPct);
       const leftPct = goingRight ? targetPct : fingerPct;
-
-      // brightness scales with how off you are — capped to stay below the line itself
-      const strength = Math.min(1, (absCents - HINT_DEAD_CENTS) / 35);
-      const alphaTop  = 0.20 + strength * 0.32;  // up to ~0.52 (brighter than before)
-      const alphaMid  = alphaTop * 0.55;
+      const strength = Math.min(1, (absCents - HINT_THRESHOLD) / 35);
+      const peakAlpha  = 0.30 + strength * 0.40;     // up to ~0.70 (bright)
       const [r, g, b] = auroraColor(absCents);
+
+      /* Build a gradient with soft falloff on BOTH ends:
+         - Near the line edge (the strong side): start at ~30% then ramp up to peak at ~10-15% into the gradient,
+           giving a soft halo near the line rather than a hard edge.
+         - Near the finger: fades to 0 by ~85-100%.
+      */
       const dir = goingRight ? 'to right' : 'to left';
       el.style.left = leftPct + '%';
       el.style.width = widthPct + '%';
       el.style.background = `linear-gradient(${dir},
-        rgba(${r},${g},${b},${alphaTop.toFixed(3)}) 0%,
-        rgba(${r},${g},${b},${alphaMid.toFixed(3)}) 35%,
+        rgba(${r},${g},${b},0) 0%,
+        rgba(${r},${g},${b},${(peakAlpha*0.6).toFixed(3)}) 8%,
+        rgba(${r},${g},${b},${peakAlpha.toFixed(3)}) 18%,
+        rgba(${r},${g},${b},${(peakAlpha*0.7).toFixed(3)}) 40%,
+        rgba(${r},${g},${b},${(peakAlpha*0.35).toFixed(3)}) 65%,
         rgba(${r},${g},${b},0) 100%)`;
-      // force a frame before bumping opacity so CSS transition kicks in
-      requestAnimationFrame(() => { el.style.opacity = '1'; });
+
+      if (isNew) void el.offsetWidth;
+      el.classList.add('visible');
     }
   }
 
   function clearAllHints() {
     for (const [pid, el] of hintPool) {
-      el.style.opacity = '0';
-      setTimeout(() => el.remove(), 200);
+      el.classList.remove('visible');
+      setTimeout(() => { if (el && el.parentNode) el.remove(); }, 200);
     }
     hintPool.clear();
+    for (const item of lineEls) {
+      item.bendPx = 0; item.wiggleAmp = 0;
+    }
   }
 
   function getMagnets() { return magnetEls; }
-  return { build, highlightNear, updateHints, clearAllHints, getMagnets };
+  function getLines() { return lineEls; }
+  return { build, highlightNear, updateHints, clearAllHints, getMagnets, getLines,
+           DEAD_CENTS, HINT_THRESHOLD };
 })();
 
 
@@ -1304,10 +1448,12 @@ const FingersView = (() => {
     const slot = document.createElement('div');
     slot.className = 'finger-slot empty';
     slot.innerHTML = `
-      <span class="num">${i+1}</span>
-      <span class="name">—</span>
-      <span class="cents"></span>
-      <span class="hz"></span>
+      <div class="top-row">
+        <span class="num">F${i+1}</span>
+        <span class="name">—</span>
+        <span class="cents"></span>
+      </div>
+      <div class="hz"></div>
     `;
     row.appendChild(slot);
     slots.push({
@@ -1363,7 +1509,6 @@ const Hud = (() => {
     options: State.SCALE_TYPES.map((s, i) => ({ value: i, label: s.name })),
     onChange: v => State.setType(v),
   });
-
   let yBotDd;
   Dropdown.make('yTopDd', {
     value: State.yTopId,
@@ -1384,43 +1529,48 @@ const Hud = (() => {
     yBotDd.setValue(State.yBotId);
   }
 
-  const octDisp = document.getElementById('octDisp');
-  function refreshOct() { octDisp.textContent = 'oct ' + State.octave; }
-  document.getElementById('octDown').addEventListener('click', () => {
-    State.setOctave(State.octave - 1); refreshOct();
-  });
-  document.getElementById('octUp').addEventListener('click', () => {
-    State.setOctave(State.octave + 1); refreshOct();
+  // octave control
+  const octDispNum = document.getElementById('octDispNum');
+  const octSeg = document.getElementById('octSeg');
+  function refreshOct() { octDispNum.textContent = State.octave; }
+  octSeg.addEventListener('click', (e) => {
+    const opt = e.target.closest('.seg-opt');
+    if (!opt) return;
+    const dir = +opt.dataset.dir;
+    State.setOctave(State.octave + dir);
+    refreshOct();
   });
   refreshOct();
 
-  document.getElementById('snap').addEventListener('click', (e) => {
-    State.setSnap(!State.snap);
-    e.currentTarget.classList.toggle('on', State.snap);
-  });
-  document.getElementById('hold').addEventListener('click', (e) => {
-    State.setHold(!State.hold);
-    e.currentTarget.classList.toggle('on', State.hold);
-    if (!State.hold) Controller.releaseHeld();
-  });
-  const magnetBtn = document.getElementById('magnet');
-  magnetBtn.classList.toggle('on', State.magnet);
-  magnetBtn.addEventListener('click', () => {
-    State.setMagnet(!State.magnet);
-    magnetBtn.classList.toggle('on', State.magnet);
-  });
-
-  // SPAN toggle — toggles 1 oct / 2 oct
-  const spanBtn = document.getElementById('span');
-  function refreshSpan() { spanBtn.textContent = State.spanOct + ' oct'; }
+  // span sliding toggle — click anywhere flips
+  const spanToggle = document.getElementById('spanToggle');
+  function refreshSpan() {
+    spanToggle.dataset.val = String(State.spanOct);
+  }
   refreshSpan();
-  spanBtn.addEventListener('click', () => {
+  spanToggle.addEventListener('click', () => {
     State.setSpan(State.spanOct === 2 ? 1 : 2);
     refreshSpan();
   });
 
+  // snap control (off / soft / hard)
+  const snapSeg = document.getElementById('snapSeg');
+  function refreshSnap() {
+    for (const opt of snapSeg.querySelectorAll('.seg-opt')) {
+      opt.classList.toggle('on', opt.dataset.val === State.snapMode);
+    }
+  }
+  refreshSnap();
+  snapSeg.addEventListener('click', (e) => {
+    const opt = e.target.closest('.seg-opt');
+    if (!opt) return;
+    State.setSnapMode(opt.dataset.val);
+    refreshSnap();
+  });
+
   document.getElementById('panic').addEventListener('click', () => Controller.panic());
 
+  // MIDI panel
   const panel = document.getElementById('midiPanel');
   const modeBtn = document.getElementById('modeBtn');
   modeBtn.addEventListener('click', () => panel.classList.toggle('open'));
@@ -1433,9 +1583,9 @@ const Hud = (() => {
   Dropdown.make('modeDd', {
     value: State.mode,
     options: [
-      { value: 'local', label: 'local synth only' },
-      { value: 'midi',  label: 'midi out only' },
-      { value: 'both',  label: 'both (local + midi)' },
+      { value: 'local', label: 'browser synth' },
+      { value: 'midi',  label: 'midi → daw' },
+      { value: 'both',  label: 'both' },
     ],
     onChange: v => {
       State.setMode(v);
@@ -1461,10 +1611,11 @@ const Hud = (() => {
     const mode = State.mode;
     modeBtn.classList.remove('mode-local', 'mode-midi', 'mode-both', 'no-conn');
     modeBtn.classList.add('mode-' + mode);
-    let txt = mode;
+    const labels = { local: 'output: synth', midi: 'output: midi', both: 'output: synth + midi' };
+    let txt = labels[mode] || mode;
     if ((mode === 'midi' || mode === 'both') && !MidiOut.connected) {
       modeBtn.classList.add('no-conn');
-      txt = mode + ' · not conn.';
+      txt = labels[mode] + ' · offline';
     }
     modeBtn.textContent = txt;
   }
@@ -1486,9 +1637,11 @@ const Controller = (() => {
   State.on(evt => { if (evt === 'scale') GridView.build(); });
   window.addEventListener('resize', () => GridView.build());
 
+  /* Soft snap = previous "magnet" behavior — tonics+fifths gravity well.
+     Hard snap = handled inside State.xToPitch. */
   const RING_RADIUS_PX = 40;
   function applyMagnet(rawPitch, x, W) {
-    if (!State.magnet) return rawPitch;
+    if (!State.isSoftSnap) return rawPitch;
     const magnets = GridView.getMagnets();
     let bestPull = 0; let bestNote = null;
     for (const m of magnets) {
@@ -1564,14 +1717,24 @@ const Controller = (() => {
   ['gesturestart','gesturechange','gestureend','contextmenu']
     .forEach(t => document.addEventListener(t, e => e.preventDefault()));
 
-  /* For each finger find the nearest scale note + its bracketing neighbors.
-     Emit feedback for the closer of the two with a `biasSide` indicating
-     which way the wiggle should lean (toward the target). */
+  /* Per-finger near map.
+     KEY CHANGE — bend follows finger across the full distance to the target line.
+     bendPx is computed as the real pixel distance between finger and target
+     line, with sign indicating direction. It is no longer capped at 18px.
+     Wiggle amplitude scales with cents-off, up to 6px on top of the bend.
+  */
   function computeNearMap() {
     const map = new Map();
     if (fingers.size === 0) return map;
     const notes = State.notes;
     if (notes.length === 0) return map;
+    const W = TouchView.W || window.innerWidth;
+    const H = TouchView.H || window.innerHeight;
+    const pad = State.pad * 100;
+    const slots = notes.length - 1;
+    const topBar = 50, botBar = 56;
+    const playH = H - topBar - botBar;
+
     for (const f of fingers.values()) {
       const p = f.voice ? f.voice.currentPitch : f.currentPitch;
       let leftIdx = -1, rightIdx = -1;
@@ -1581,21 +1744,51 @@ const Controller = (() => {
       }
       if (leftIdx === -1) leftIdx = 0;
       if (rightIdx === -1) rightIdx = notes.length - 1;
-      const pairs = new Set([notes[leftIdx], notes[rightIdx]]);
-      for (const n of pairs) {
-        const d = Math.abs(p - n);
-        if (d < 0.5) {
-          const intensity = 1 - d * 2;
-          const cents = Math.round((p - n) * 100);
-          // bias: positive cents means we're above the target, so target is to the LEFT
-          // negative cents means we're below the target, so target is to the RIGHT
-          let biasSide = null;
-          if (cents > 6) biasSide = 'L';
-          else if (cents < -6) biasSide = 'R';
-          const prev = map.get(n);
-          if (!prev || prev.intensity < intensity) {
-            map.set(n, { intensity, cents, biasSide });
-          }
+
+      // dead-zone check between two notes
+      let inDeadZone = false;
+      if (leftIdx !== rightIdx) {
+        const distL = p - notes[leftIdx];
+        const distR = notes[rightIdx] - p;
+        const midDist = Math.abs(distL - distR);
+        if (midDist * 100 < GridView.DEAD_CENTS) inDeadZone = true;
+      }
+      if (inDeadZone) continue;
+
+      // bend pivot Y for this finger
+      const bendYFrac = Math.max(0, Math.min(1, (f.y - topBar) / playH));
+
+      // emit feedback for BOTH neighbors so the bend transfers smoothly across the midpoint.
+      // each neighbor's intensity is based on how close the finger pitch is to it.
+      const neighborIdxs = leftIdx === rightIdx ? [leftIdx] : [leftIdx, rightIdx];
+
+      for (const idx of neighborIdxs) {
+        const targetMidi = notes[idx];
+        const d = Math.abs(p - targetMidi);
+        if (d >= 0.5) continue;
+        // intensity is for the line *color brightness*, not a gate.
+        // Bend should always apply as long as we're not in dead zone.
+        const intensity = Math.max(0.08, 1 - d * 2);
+        const cents = Math.round((p - targetMidi) * 100);
+        const absCents = Math.abs(cents);
+
+        // bendPx = real pixel offset between finger and this line.
+        // ALWAYS the full distance whenever finger is off-pitch — no threshold gating.
+        const targetPx = (pad/100) * W + (idx / slots) * (W - 2 * (pad/100) * W);
+        let bendPx = absCents > 2 ? (f.x - targetPx) : 0;
+
+        // wiggle: DOUBLED amplitude — up to 28px, kicks in fast
+        let wiggleAmp = 0;
+        let wiggleSpeed = 70;
+        if (absCents > GridView.HINT_THRESHOLD) {
+          const wStrength = Math.min(1, Math.pow((absCents - GridView.HINT_THRESHOLD) / 22, 0.7));
+          wiggleAmp = wStrength * 28;
+          wiggleSpeed = Math.max(20, 60 - absCents * 1.4);
+        }
+
+        const prev = map.get(targetMidi);
+        if (!prev || prev.intensity < intensity) {
+          map.set(targetMidi, { intensity, cents, bendPx, bendYFrac, wiggleAmp, wiggleSpeed });
         }
       }
     }
@@ -1605,18 +1798,28 @@ const Controller = (() => {
   function computeHints() {
     const out = new Map();
     if (fingers.size === 0) { GridView.clearAllHints(); return out; }
-    if (State.snap) { GridView.clearAllHints(); return out; }
+    if (State.isHardSnap) { GridView.clearAllHints(); return out; }
     const W = TouchView.W || window.innerWidth;
     const notes = State.notes;
     const pad = State.pad * 100;
     const slots = notes.length - 1;
     for (const f of fingers.values()) {
       const p = f.voice ? f.voice.currentPitch : f.currentPitch;
-      let bestIdx = 0, bestDist = Infinity;
+      let leftIdx = -1, rightIdx = -1;
       for (let i = 0; i < notes.length; i++) {
-        const d = Math.abs(p - notes[i]);
-        if (d < bestDist) { bestDist = d; bestIdx = i; }
+        if (notes[i] <= p) leftIdx = i;
+        if (notes[i] >= p && rightIdx === -1) rightIdx = i;
       }
+      if (leftIdx === -1) leftIdx = 0;
+      if (rightIdx === -1) rightIdx = notes.length - 1;
+      if (leftIdx !== rightIdx) {
+        const distL = p - notes[leftIdx];
+        const distR = notes[rightIdx] - p;
+        if (Math.abs(distL - distR) * 100 < GridView.DEAD_CENTS) continue;
+      }
+      const dL = Math.abs(p - notes[leftIdx]);
+      const dR = Math.abs(p - notes[rightIdx]);
+      const bestIdx = dL <= dR ? leftIdx : rightIdx;
       const targetPct = pad + (bestIdx / slots) * (100 - 2 * pad);
       const fingerPct = (f.x / W) * 100;
       const cents = Math.round((p - notes[bestIdx]) * 100);
@@ -1638,7 +1841,7 @@ const Controller = (() => {
 
   function loop(now) {
     TouchView.render(fingers, now);
-    GridView.highlightNear(computeNearMap());
+    GridView.highlightNear(computeNearMap(), now);
     GridView.updateHints(computeHints());
     FingersView.update(arrivalOrder, fingerProxy, heldVoices);
     requestAnimationFrame(loop);
