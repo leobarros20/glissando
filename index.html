@@ -742,6 +742,23 @@
     transform: translateY(0);
   }
 </style>
+<!-- Microsoft Clarity analytics -->
+<script type="text/javascript">
+  (function(c,l,a,r,i,t,y){
+    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+  })(window, document, "clarity", "script", "wq4n224mly");
+</script>
+
+<!-- Google Analytics (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LLXX1ZJYV2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LLXX1ZJYV2');
+</script>
 </head>
 <body>
 
@@ -1734,8 +1751,12 @@ const TouchView = (() => {
       ctx.globalAlpha = 0.55;
       ctx.beginPath(); ctx.arc(f.x, f.y, GLOW_RADIUS, 0, Math.PI*2); ctx.fill();
       ctx.globalAlpha = 1;
+      // dot with a dark outline so two close fingers always read as separate
       ctx.fillStyle = f.color;
       ctx.beginPath(); ctx.arc(f.x, f.y, DOT_RADIUS, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(f.x, f.y, DOT_RADIUS, 0, Math.PI*2); ctx.stroke();
       ctx.strokeStyle = f.color;
       ctx.globalAlpha = 0.20; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(0, f.y); ctx.lineTo(W, f.y); ctx.stroke();
@@ -2073,6 +2094,11 @@ const Controller = (() => {
     const topBar = 50, botBar = 56;
     const playH = H - topBar - botBar;
 
+    // First pass: collect per-finger candidate emissions for each line.
+    // Second pass: write only the WINNER per line based on pitch-distance,
+    // so two fingers competing for the same line never produce flicker.
+    const candidates = new Map();  // midi -> [{intensity, cents, bendPx, bendYFrac, wiggleAmp, wiggleSpeed, fingerId, pitchDist}]
+
     for (const f of fingers.values()) {
       const p = f.voice ? f.voice.currentPitch : f.currentPitch;
       let leftIdx = -1, rightIdx = -1;
@@ -2093,29 +2119,18 @@ const Controller = (() => {
       }
       if (inDeadZone) continue;
 
-      // bend pivot Y for this finger
       const bendYFrac = Math.max(0, Math.min(1, (f.y - topBar) / playH));
-
-      // emit feedback for BOTH neighbors so the bend transfers smoothly across the midpoint.
-      // each neighbor's intensity is based on how close the finger pitch is to it.
       const neighborIdxs = leftIdx === rightIdx ? [leftIdx] : [leftIdx, rightIdx];
 
       for (const idx of neighborIdxs) {
         const targetMidi = notes[idx];
         const d = Math.abs(p - targetMidi);
         if (d >= 0.5) continue;
-        // intensity is for the line *color brightness*, not a gate.
-        // Bend should always apply as long as we're not in dead zone.
         const intensity = Math.max(0.08, 1 - d * 2);
         const cents = Math.round((p - targetMidi) * 100);
         const absCents = Math.abs(cents);
-
-        // bendPx = real pixel offset between finger and this line.
-        // ALWAYS the full distance whenever finger is off-pitch — no threshold gating.
         const targetPx = (pad/100) * W + (idx / slots) * (W - 2 * (pad/100) * W);
         let bendPx = absCents > 2 ? (f.x - targetPx) : 0;
-
-        // wiggle: DOUBLED amplitude — up to 28px, kicks in fast
         let wiggleAmp = 0;
         let wiggleSpeed = 70;
         if (absCents > GridView.HINT_THRESHOLD) {
@@ -2123,12 +2138,20 @@ const Controller = (() => {
           wiggleAmp = wStrength * 28;
           wiggleSpeed = Math.max(20, 60 - absCents * 1.4);
         }
-
-        const prev = map.get(targetMidi);
-        if (!prev || prev.intensity < intensity) {
-          map.set(targetMidi, { intensity, cents, bendPx, bendYFrac, wiggleAmp, wiggleSpeed });
-        }
+        if (!candidates.has(targetMidi)) candidates.set(targetMidi, []);
+        candidates.get(targetMidi).push({
+          intensity, cents, bendPx, bendYFrac, wiggleAmp, wiggleSpeed,
+          pitchDist: d, fingerId: f.pointerId,
+        });
       }
+    }
+
+    // Resolve: for each line, pick the candidate from the finger with the
+    // smallest pitch distance to that line. That finger "owns" the visual.
+    for (const [midi, list] of candidates) {
+      list.sort((a, b) => a.pitchDist - b.pitchDist);
+      const winner = list[0];
+      map.set(midi, winner);
     }
     return map;
   }
