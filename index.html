@@ -1391,6 +1391,7 @@ const MidiOut = (() => {
         pid, baseNote, lastBend: bendForOffset(offset),
         lastY: Math.round(yNorm * 127), lastSentAt: 0,
       });
+      try { if (typeof Analytics !== 'undefined') Analytics.incMidi(); } catch(_){}
       return ch;
     },
     fingerMove(pid, pitchFloat, yNorm) {
@@ -1831,25 +1832,25 @@ const Hud = (() => {
   Dropdown.make('rootDd', {
     value: State.rootIdx,
     options: State.NOTE_NAMES.map((n, i) => ({ value: i, label: n })),
-    onChange: v => State.setRoot(v),
+    onChange: v => { State.setRoot(v); Analytics.track('change_root', { root: State.NOTE_NAMES[v] }); },
   });
   Dropdown.make('typeDd', {
     value: State.typeIdx,
     options: State.SCALE_TYPES.map((s, i) => ({ value: i, label: s.name })),
-    onChange: v => State.setType(v),
+    onChange: v => { State.setType(v); Analytics.track('change_scale', { scale: State.SCALE_TYPES[v].id }); },
   });
   let yBotDd;
   Dropdown.make('yTopDd', {
     value: State.yTopId,
     options: State.Y_EFFECTS.map(e => ({ value: e.id, label: e.name })),
-    onChange: v => { State.setYTop(v); rebuildYBot(); },
+    onChange: v => { State.setYTop(v); rebuildYBot(); Analytics.track('change_slide_up', { effect: v }); },
   });
   yBotDd = Dropdown.make('yBotDd', {
     value: State.yBotId,
     options: State.Y_EFFECTS.map(e => ({
       value: e.id, label: e.name, disabled: !State.compat(State.yTopId, e.id),
     })),
-    onChange: v => State.setYBot(v),
+    onChange: v => { State.setYBot(v); Analytics.track('change_slide_down', { effect: v }); },
   });
   function rebuildYBot() {
     yBotDd.setOptions(State.Y_EFFECTS.map(e => ({
@@ -1868,6 +1869,7 @@ const Hud = (() => {
     const dir = +opt.dataset.dir;
     State.setOctave(State.octave + dir);
     refreshOct();
+    Analytics.track('change_octave', { direction: dir > 0 ? 'up' : 'down', value: State.octave });
   });
   refreshOct();
 
@@ -1878,8 +1880,10 @@ const Hud = (() => {
   }
   refreshSpan();
   spanToggle.addEventListener('click', () => {
-    State.setSpan(State.spanOct === 2 ? 1 : 2);
+    const next = State.spanOct === 2 ? 1 : 2;
+    State.setSpan(next);
     refreshSpan();
+    Analytics.track('change_span', { octaves: next });
   });
 
   // snap control (off / soft / hard)
@@ -1895,9 +1899,13 @@ const Hud = (() => {
     if (!opt) return;
     State.setSnapMode(opt.dataset.val);
     refreshSnap();
+    Analytics.track('change_snap', { mode: opt.dataset.val });
   });
 
-  document.getElementById('panic').addEventListener('click', () => Controller.panic());
+  document.getElementById('panic').addEventListener('click', () => {
+    Controller.panic();
+    Analytics.track('press_panic');
+  });
 
   // MIDI panel
   const panel = document.getElementById('midiPanel');
@@ -1918,6 +1926,8 @@ const Hud = (() => {
     onChange: v => {
       State.setMode(v);
       updateModeBtn();
+      Analytics.track('change_output_mode', { mode: v });
+      if (v === 'midi') Analytics.markUsedMidiMode();
     },
   });
 
@@ -1937,6 +1947,8 @@ const Hud = (() => {
         onChange: id => {
           MidiOut.chooseOutput(id);
           try { localStorage.setItem('glissando.midiDevice', id); } catch(_){}
+          const sel = MidiOut.outputs.find(o => o.id === id);
+          Analytics.track('select_midi_device', { device_name: sel ? sel.name : 'unknown' });
         },
       });
     }
@@ -1948,6 +1960,8 @@ const Hud = (() => {
   const midiDot = document.getElementById('midiDot');
   const midiStatus = document.getElementById('midiStatus');
 
+  let _midiPermTracked = false;
+  let _midiCountTracked = -1;
   MidiOut.onStatus((s) => {
     midiDot.classList.toggle('connected', !!s.connected);
     if (!s.supported) {
@@ -1964,6 +1978,19 @@ const Hud = (() => {
     }
     buildDeviceDd(s.outputs, s.selectedId);
     updateModeBtn();
+
+    // Analytics: permission state once, device count when it changes
+    if (!_midiPermTracked && (s.permission === 'granted' || s.permission === 'denied' || !s.supported)) {
+      _midiPermTracked = true;
+      Analytics.track('midi_permission', {
+        supported: s.supported,
+        permission: s.supported ? s.permission : 'unsupported',
+      });
+    }
+    if (s.permission === 'granted' && s.outputs.length !== _midiCountTracked) {
+      _midiCountTracked = s.outputs.length;
+      Analytics.track('midi_devices_available', { count: s.outputs.length });
+    }
   });
 
   function updateModeBtn() {
@@ -2036,6 +2063,7 @@ const Controller = (() => {
       trail: [{ x, y, t: performance.now() }],
     });
     arrivalOrder.push(e.pointerId);
+    try { if (typeof Analytics !== 'undefined') Analytics.markFirstPlay(); } catch(_){}
   }
   function onMove(e) {
     const f = fingers.get(e.pointerId);
@@ -2230,6 +2258,99 @@ const Controller = (() => {
 
 
 /* ============================================================================
+   ANALYTICS — fires events to both GA4 (gtag) and Microsoft Clarity.
+   Safe to call before scripts load (queues into dataLayer / clarity.q).
+============================================================================ */
+const Analytics = (() => {
+  const sessionStart = performance.now();
+  let firstPlayFired = false;
+  let firstMidiFired = false;
+  let midiNoteCount = 0;
+  let everUsedMidiMode = false;
+
+  // Identify the user to Clarity so sessions from the same browser are merged.
+  // Anonymous random ID stored in localStorage, stable across visits.
+  function getUserId() {
+    try {
+      let id = localStorage.getItem('glissando.userId');
+      if (!id) {
+        id = 'anon:' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        localStorage.setItem('glissando.userId', id);
+      }
+      return id;
+    } catch (_) {
+      return null;
+    }
+  }
+  const userId = getUserId();
+
+  function identifyOnce() {
+    if (!userId) return;
+    try {
+      // Clarity custom user identifier — sessions with the same ID merge as one user.
+      if (typeof window.clarity === 'function') {
+        window.clarity('identify', userId);
+      }
+      // GA4 user property — gives GA the same merged-user view.
+      if (typeof window.gtag === 'function') {
+        window.gtag('set', 'user_properties', { app_user_id: userId });
+      }
+    } catch (_) {}
+  }
+  // call as soon as the analytics scripts are loaded (they queue into c.q anyway)
+  identifyOnce();
+  setTimeout(identifyOnce, 1500);  // re-call after scripts have actually loaded
+
+  function track(eventName, params = {}) {
+    try {
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', eventName, params);
+      }
+      if (typeof window.clarity === 'function') {
+        window.clarity('event', eventName);
+        for (const [k, v] of Object.entries(params)) {
+          if (v !== undefined && v !== null) {
+            window.clarity('set', k, String(v));
+          }
+        }
+      }
+    } catch (e) { /* never let analytics break the app */ }
+  }
+
+  function markFirstPlay() {
+    if (firstPlayFired) return;
+    firstPlayFired = true;
+    track('first_play', {
+      time_to_first_play_ms: Math.round(performance.now() - sessionStart),
+    });
+  }
+  function markFirstMidi() {
+    if (firstMidiFired) return;
+    firstMidiFired = true;
+    track('first_midi_sent', {
+      time_to_first_midi_ms: Math.round(performance.now() - sessionStart),
+    });
+  }
+  function incMidi() {
+    midiNoteCount++;
+    if (!firstMidiFired) markFirstMidi();
+  }
+  function markUsedMidiMode() { everUsedMidiMode = true; }
+
+  window.addEventListener('pagehide', () => {
+    track('session_end', {
+      session_duration_ms: Math.round(performance.now() - sessionStart),
+      midi_notes_sent: midiNoteCount,
+      used_midi_mode: everUsedMidiMode,
+      ever_played: firstPlayFired,
+    });
+  });
+
+  return { track, markFirstPlay, incMidi, markUsedMidiMode, userId };
+})();
+
+
+/* ============================================================================
    POPUP + UI EXTRAS
 ============================================================================ */
 const Popup = (() => {
@@ -2258,6 +2379,7 @@ const Popup = (() => {
 // Start button: hide popup, kick off audio + MIDI (require user gesture)
 document.getElementById('popupStartBtn').addEventListener('click', async () => {
   Popup.hide();
+  Analytics.track('session_start');
   try { await screen.orientation.lock('landscape'); } catch(_){}
   try { await navigator.wakeLock.request('screen'); } catch(_){}
   Controller.start();
@@ -2265,7 +2387,10 @@ document.getElementById('popupStartBtn').addEventListener('click', async () => {
 });
 
 // Help button (top bar) — open popup in help view
-document.getElementById('helpBtn').addEventListener('click', () => Popup.show('help'));
+document.getElementById('helpBtn').addEventListener('click', () => {
+  Popup.show('help');
+  Analytics.track('open_help');
+});
 
 // Finger position row toggle
 const fingerToggle = document.getElementById('fingersToggle');
@@ -2282,6 +2407,7 @@ fingerToggle.addEventListener('click', () => {
   fingersOn = !fingersOn;
   try { localStorage.setItem('glissando.fingers', fingersOn ? '1' : '0'); } catch(_){}
   applyFingerToggle();
+  Analytics.track('toggle_finger_positions', { state: fingersOn ? 'on' : 'off' });
 });
 
 // Panic tooltip — tap toggle for mobile (since hover doesn't exist)
