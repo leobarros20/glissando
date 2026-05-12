@@ -187,6 +187,35 @@
   }
   .module + .module { border-left: 1px solid rgba(255,255,255,0.08); padding-left: 14px; }
 
+  /* ===== RESPONSIVE: narrow screens use horizontal scroll on bars ===== */
+  @media (max-width: 1100px) {
+    #bar {
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-wrap: nowrap;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    #botBar {
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-wrap: nowrap;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    #bar::-webkit-scrollbar, #botBar::-webkit-scrollbar {
+      height: 4px;
+    }
+    #bar::-webkit-scrollbar-thumb, #botBar::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+    }
+    #bar > *, #botBar > * { flex-shrink: 0; }
+    #fingerRow { flex-shrink: 0; }
+  }
+
   /* CUSTOM DROPDOWN */
   .dd {
     position: relative;
@@ -517,27 +546,201 @@
     justify-content: flex-end;
   }
 
-  #gate {
-    position: fixed; inset: 0; z-index: 100;
+  /* ============ POPUP ============ */
+  .popup-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(8, 10, 14, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 200;
     display: flex; align-items: center; justify-content: center;
-    background: #0a0d12; color: #cfd3da;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease-out;
   }
-  #gate .inner { text-align: center; padding: 0 24px; }
-  #gate h1 {
-    font: 600 56px/1 'Times New Roman', serif;
-    letter-spacing: .01em; margin: 0 0 12px; color: #e6e8ec; font-style: italic;
+  .popup-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
-  #gate .sub { color: #7a8290; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin: 0; }
-  #gate .go {
-    margin-top: 32px;
-    border: 1px solid rgba(255,255,255,.25);
-    background: transparent; color: #e6e8ec;
-    padding: 14px 36px; border-radius: 999px;
-    font: inherit; font-size: 12px; letter-spacing: .2em;
-    text-transform: uppercase; cursor: pointer;
+  .popup {
+    background: rgba(15, 19, 26, 0.97);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 32px 36px;
+    width: min(520px, 92vw);
+    max-height: 86vh;
+    overflow-y: auto;
+    color: #cfd3da;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
   }
-  #gate .go:active { background: rgba(255,255,255,.08); }
-  #gate .hint { margin-top: 18px; font-size: 10px; opacity: .6; letter-spacing: .12em; text-transform: uppercase; }
+  .popup-close {
+    position: absolute;
+    top: 10px; right: 14px;
+    background: transparent;
+    border: 0; color: #7a8290;
+    font-size: 24px; line-height: 1;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 50%;
+    transition: background .12s, color .12s;
+  }
+  .popup-close:hover { background: rgba(255,255,255,0.06); color: #e6e8ec; }
+  .popup-view.hidden { display: none; }
+  .popup-title {
+    font: italic 600 48px/1 'Times New Roman', serif;
+    margin: 0 0 8px;
+    color: #e6e8ec;
+    text-align: center;
+  }
+  .popup-title-sm {
+    font: 600 18px/1.2 ui-monospace, monospace;
+    letter-spacing: .04em;
+    margin: 0 0 18px;
+    color: #e6e8ec;
+    padding-right: 24px;
+  }
+  .popup-sub {
+    color: #7a8290; font-size: 11px;
+    letter-spacing: .14em; text-transform: uppercase;
+    margin: 0 0 24px;
+    text-align: center;
+  }
+  .popup-cta {
+    display: block;
+    margin: 0 auto 16px;
+    border: 1px solid rgba(120,200,255,0.45);
+    background: rgba(120,200,255,0.15);
+    color: #fff;
+    padding: 12px 36px;
+    border-radius: 999px;
+    font: 600 12px ui-monospace, monospace;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .14s, border-color .14s;
+  }
+  .popup-cta:hover {
+    background: rgba(120,200,255,0.24);
+    border-color: rgba(120,200,255,0.65);
+  }
+  .popup-row-actions {
+    display: flex; justify-content: center; gap: 16px;
+    margin-bottom: 12px;
+  }
+  .popup-link {
+    background: transparent;
+    border: 0;
+    color: #7a8290;
+    font: 11px ui-monospace, monospace;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-bottom: 1px dashed rgba(122, 130, 144, 0.4);
+    transition: color .14s, border-color .14s;
+  }
+  .popup-link:hover {
+    color: #cfd3da;
+    border-color: rgba(207, 211, 218, 0.6);
+  }
+  .popup-tip {
+    text-align: center;
+    color: #5a6270;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-top: 16px;
+  }
+  .popup-back {
+    background: transparent;
+    border: 0;
+    color: #7a8290;
+    font: 11px ui-monospace, monospace;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-bottom: 14px;
+    transition: color .14s;
+  }
+  .popup-back:hover { color: #e6e8ec; }
+  .popup-help {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #b0b7c2;
+  }
+  .popup-help h3 {
+    color: #e6e8ec;
+    font: 600 11px ui-monospace, monospace;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin: 18px 0 6px;
+  }
+  .popup-help h3:first-child { margin-top: 0; }
+  .popup-help p { margin: 0 0 10px; }
+  .popup-help strong { color: #e6e8ec; }
+  .popup-help a {
+    color: #5ec8ff;
+    text-decoration: none;
+    border-bottom: 1px dotted rgba(94, 200, 255, 0.4);
+  }
+  .popup-help a:hover { border-bottom-style: solid; }
+
+  /* ============ ICON BUTTONS (help, info) ============ */
+  .icon-btn {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: #cfd3da;
+    font: 600 13px ui-monospace, monospace;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0;
+    transition: background .12s, color .12s;
+  }
+  .icon-btn:hover {
+    background: rgba(120,200,255,.18);
+    color: #fff;
+  }
+  .icon-btn-sm {
+    width: 18px; height: 18px;
+    font-size: 10px;
+    margin-left: 4px;
+  }
+
+  /* ============ TOOLTIP (for panic ?) ============ */
+  .tip-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .tip-content {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: rgba(20, 26, 36, 0.98);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: 11px/1.4 ui-monospace, monospace;
+    letter-spacing: .04em;
+    text-transform: none;
+    color: #cfd3da;
+    width: 200px;
+    z-index: 30;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity .15s, transform .15s;
+  }
+  .tip-wrap:hover .tip-content,
+  .tip-wrap.show-tip .tip-content {
+    opacity: 1;
+    transform: translateY(0);
+  }
 </style>
 </head>
 <body>
@@ -593,12 +796,16 @@
   </div>
 
   <div class="spacer"></div>
+  <button class="icon-btn" id="helpBtn" title="how to connect">?</button>
 </div>
 
 <!-- BOTTOM BAR: finger readouts (left) + settings (right) -->
 <div id="botBar">
   <div id="fingerRow"></div>
   <div id="botSettings">
+    <div class="module">
+      <button class="pill" id="fingersToggle">finger positions: on</button>
+    </div>
     <div class="module">
       <div class="group">
         <span class="label-ui">slide ↑</span>
@@ -611,7 +818,13 @@
     </div>
     <div class="module">
       <button class="pill mode-indicator" id="modeBtn">output: synth</button>
-      <button class="pill" id="panic">panic</button>
+      <div class="tip-wrap" id="panicTip">
+        <button class="pill" id="panic">panic</button>
+        <button class="icon-btn icon-btn-sm" id="panicInfo" type="button" aria-label="what panic does">?</button>
+        <div class="tip-content">
+          Instantly silences all sound. Use if any notes get stuck.
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -641,12 +854,47 @@
   </div>
 </div>
 
-<div id="gate">
-  <div class="inner">
-    <h1>Glissando</h1>
-    <p class="sub">expressive multi-touch instrument</p>
-    <button class="go" id="gateBtn">tap to start</button>
-    <div class="hint">use headphones</div>
+<div id="popupBackdrop" class="popup-backdrop visible">
+  <div id="popup" class="popup">
+    <button class="popup-close" id="popupClose" title="close">×</button>
+
+    <!-- START VIEW -->
+    <div class="popup-view" data-view="start">
+      <h1 class="popup-title">Glissando</h1>
+      <p class="popup-sub">expressive multi-touch instrument</p>
+      <button class="popup-cta" id="popupStartBtn">start</button>
+      <div class="popup-row-actions">
+        <button class="popup-link" data-goto="help">how to connect</button>
+      </div>
+      <div class="popup-tip">use headphones</div>
+    </div>
+
+    <!-- HELP VIEW -->
+    <div class="popup-view hidden" data-view="help">
+      <button class="popup-back" data-goto="start">← back</button>
+      <h2 class="popup-title-sm">How to connect</h2>
+      <div class="popup-help">
+        <h3>Browser synth (no setup)</h3>
+        <p>The default mode. Sound plays through this page. Use headphones for best results.</p>
+
+        <h3>MIDI → DAW (Ableton, Logic, etc.)</h3>
+        <p>Glissando sends MPE messages over Web MIDI to any DAW or software synth on the same device.</p>
+
+        <p><strong>On Mac:</strong> create an IAC bus in Audio MIDI Setup (built into macOS). In Ableton's MIDI preferences, enable Track + MPE for the IAC bus. Glissando will auto-select it.</p>
+
+        <p><strong>On Windows:</strong> install <a href="https://www.tobias-erichsen.de/software/loopmidi.html" target="_blank" rel="noopener">loopMIDI</a> (one-time, free). Create a port named "Glissando". In Ableton's MIDI prefs, enable Track + MPE for that port.</p>
+
+        <p><strong>On Android tablet → laptop via USB:</strong> plug the tablet into your laptop. On the tablet, change USB mode to "MIDI". The tablet appears as a native MIDI device on the laptop. Open Glissando in Chrome on the tablet, switch output to MIDI, pick "Glissando" or your tablet's name on the laptop side.</p>
+
+        <h3>Ableton track setup</h3>
+        <p>Create a MIDI track, set input to your MIDI device, arm the track, drop an MPE-aware instrument (Wavetable, Vital, Surge XT, ROLI Equator). Enable MPE for the input under Preferences → MIDI.</p>
+
+        <h3>Controls</h3>
+        <p><strong>Snap modes:</strong> <em>free</em> = continuous pitch, <em>pull</em> = gravity wells around tonics and fifths, <em>lock</em> = locks to scale notes.</p>
+        <p><strong>Slide ↑ / Slide ↓:</strong> what your Y-axis (vertical finger position) controls. Affects the browser synth only — MIDI output always sends CC74 (the MPE standard) for Ableton's instrument to map.</p>
+        <p><strong>Panic:</strong> instantly silences all sound. Use if any notes get stuck.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1641,11 +1889,10 @@ const Hud = (() => {
   });
 
   Dropdown.make('modeDd', {
-    value: State.mode,
+    value: State.mode === 'both' ? 'local' : State.mode,
     options: [
       { value: 'local', label: 'browser synth' },
       { value: 'midi',  label: 'midi → daw' },
-      { value: 'both',  label: 'both' },
     ],
     onChange: v => {
       State.setMode(v);
@@ -1699,12 +1946,12 @@ const Hud = (() => {
   });
 
   function updateModeBtn() {
-    const mode = State.mode;
+    const mode = State.mode === 'both' ? 'local' : State.mode;
     modeBtn.classList.remove('mode-local', 'mode-midi', 'mode-both', 'no-conn');
     modeBtn.classList.add('mode-' + mode);
-    const labels = { local: 'output: synth', midi: 'output: midi', both: 'output: synth + midi' };
+    const labels = { local: 'output: synth', midi: 'output: midi' };
     let txt = labels[mode] || mode;
-    if ((mode === 'midi' || mode === 'both') && !MidiOut.connected) {
+    if (mode === 'midi' && !MidiOut.connected) {
       modeBtn.classList.add('no-conn');
       txt = labels[mode] + ' · offline';
     }
@@ -1960,6 +2207,76 @@ const Controller = (() => {
 
 
 /* ============================================================================
+   POPUP + UI EXTRAS
+============================================================================ */
+const Popup = (() => {
+  const backdrop = document.getElementById('popupBackdrop');
+  const closeBtn = document.getElementById('popupClose');
+  const views = backdrop.querySelectorAll('.popup-view');
+  function show(viewName) {
+    views.forEach(v => v.classList.toggle('hidden', v.dataset.view !== viewName));
+    backdrop.classList.add('visible');
+  }
+  function hide() {
+    backdrop.classList.remove('visible');
+  }
+  closeBtn.addEventListener('click', hide);
+  // Click backdrop (outside the popup card) to close
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) hide();
+  });
+  // View switch buttons
+  backdrop.querySelectorAll('[data-goto]').forEach(btn => {
+    btn.addEventListener('click', () => show(btn.dataset.goto));
+  });
+  return { show, hide };
+})();
+
+// Start button: hide popup, kick off audio + MIDI (require user gesture)
+document.getElementById('popupStartBtn').addEventListener('click', async () => {
+  Popup.hide();
+  try { await screen.orientation.lock('landscape'); } catch(_){}
+  try { await navigator.wakeLock.request('screen'); } catch(_){}
+  Controller.start();
+  MidiOut.init();
+});
+
+// Help button (top bar) — open popup in help view
+document.getElementById('helpBtn').addEventListener('click', () => Popup.show('help'));
+
+// Finger position row toggle
+const fingerToggle = document.getElementById('fingersToggle');
+const fingerRow = document.getElementById('fingerRow');
+let fingersOn = true;
+try { fingersOn = localStorage.getItem('glissando.fingers') !== '0'; } catch(_){}
+function applyFingerToggle() {
+  fingerRow.style.display = fingersOn ? '' : 'none';
+  fingerToggle.textContent = 'finger positions: ' + (fingersOn ? 'on' : 'off');
+  fingerToggle.classList.toggle('on', fingersOn);
+}
+applyFingerToggle();
+fingerToggle.addEventListener('click', () => {
+  fingersOn = !fingersOn;
+  try { localStorage.setItem('glissando.fingers', fingersOn ? '1' : '0'); } catch(_){}
+  applyFingerToggle();
+});
+
+// Panic tooltip — tap toggle for mobile (since hover doesn't exist)
+const panicInfo = document.getElementById('panicInfo');
+const panicTip  = document.getElementById('panicTip');
+panicInfo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  panicTip.classList.toggle('show-tip');
+});
+// Dismiss tooltip when tapping elsewhere
+document.addEventListener('click', (e) => {
+  if (panicTip.classList.contains('show-tip') && !panicTip.contains(e.target)) {
+    panicTip.classList.remove('show-tip');
+  }
+});
+
+
+/* ============================================================================
    BOOT
 ============================================================================ */
 GridView.build();
@@ -1972,19 +2289,10 @@ if (_restoreId) {
     if (s.permission === 'granted' && s.outputs.length) {
       const exists = s.outputs.find(o => o.id === _restoreId);
       if (exists) MidiOut.chooseOutput(_restoreId);
-      _restoreId = null;   // don't re-apply
+      _restoreId = null;
     }
   });
 }
-
-document.getElementById('gateBtn').addEventListener('click', async () => {
-  document.getElementById('gate').style.display = 'none';
-  try { await screen.orientation.lock('landscape'); } catch(_){}
-  try { await navigator.wakeLock.request('screen'); } catch(_){}
-  Controller.start();
-  // Now that we have a user gesture, kick off Web MIDI permission request.
-  MidiOut.init();
-});
 </script>
 </body>
 </html>
