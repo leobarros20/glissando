@@ -248,22 +248,20 @@
     border-color: rgba(120,200,255,.35);
   }
   .dd-menu {
-    position: absolute;
-    top: calc(100% + 4px); left: 0;
+    position: fixed;
     background: rgba(20, 26, 36, 0.98);
     border: 1px solid rgba(255,255,255,0.14);
     border-radius: 8px;
-    min-width: 100%;
+    min-width: 100px;
     max-height: 60vh;
     overflow-y: auto;
     padding: 4px;
-    z-index: 50;
+    z-index: 9999;
     display: none;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
-  .dd-menu.dd-up { top: auto; bottom: calc(100% + 4px); }
   .dd-menu.open { display: block; }
   .dd-option {
     padding: 6px 14px;
@@ -866,7 +864,7 @@
   </div>
   <div class="help" id="midiHelp">
     <strong>browser synth</strong> plays inside this page.<br>
-    <strong>midi → daw</strong> sends MPE to your selected MIDI device.<br>
+    <strong>midi controller</strong> sends MPE to your selected MIDI device.<br>
     <strong>both</strong> does both at once.
   </div>
 </div>
@@ -894,7 +892,7 @@
         <h3>Browser synth (no setup)</h3>
         <p>The default mode. Sound plays through this page. Use headphones for best results.</p>
 
-        <h3>MIDI → DAW (Ableton, Logic, etc.)</h3>
+        <h3>MIDI controller (Ableton, Logic, etc.)</h3>
         <p>Glissando sends MPE messages over Web MIDI to any DAW or software synth on the same device.</p>
 
         <p><strong>On Mac:</strong> create an IAC bus in Audio MIDI Setup (built into macOS). In Ableton's MIDI preferences, enable Track + MPE for the IAC bus. Glissando will auto-select it.</p>
@@ -938,7 +936,9 @@ const Dropdown = (() => {
     btn.className = 'dd-button'; btn.type = 'button';
     const menu = document.createElement('div');
     menu.className = 'dd-menu'; menu._button = btn;
-    root.appendChild(btn); root.appendChild(menu);
+    root.appendChild(btn);
+    // mount menu on body to escape scroll-container clipping / z-index traps
+    document.body.appendChild(menu);
     let value = opts.value;
     let options = opts.options;
     const onChange = opts.onChange;
@@ -961,17 +961,34 @@ const Dropdown = (() => {
         menu.appendChild(el);
       }
     }
+    function positionMenu() {
+      const rect = btn.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const spaceBelow = vh - rect.bottom;
+      const menuMaxH = Math.min(vh * 0.6, 400);
+      const goUp = spaceBelow < menuMaxH + 12 && rect.top > spaceBelow;
+      menu.style.left = rect.left + 'px';
+      menu.style.minWidth = rect.width + 'px';
+      if (goUp) {
+        menu.style.top = 'auto';
+        menu.style.bottom = (vh - rect.top + 4) + 'px';
+      } else {
+        menu.style.bottom = 'auto';
+        menu.style.top = (rect.bottom + 4) + 'px';
+      }
+    }
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (openMenu === menu) { closeMenu(); return; }
       closeMenu();
-      const rect = btn.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      menu.classList.toggle('dd-up', spaceBelow < 240);
+      positionMenu();
       menu.classList.add('open');
       btn.classList.add('open');
       openMenu = menu;
     });
+    // reposition on window resize/scroll while open
+    window.addEventListener('resize', () => { if (openMenu === menu) positionMenu(); });
+    window.addEventListener('scroll', () => { if (openMenu === menu) positionMenu(); }, true);
     render();
     return {
       setValue(v) { value = v; render(); },
@@ -1921,7 +1938,7 @@ const Hud = (() => {
     value: State.mode === 'both' ? 'local' : State.mode,
     options: [
       { value: 'local', label: 'browser synth' },
-      { value: 'midi',  label: 'midi → daw' },
+      { value: 'midi',  label: 'midi controller' },
     ],
     onChange: v => {
       State.setMode(v);
