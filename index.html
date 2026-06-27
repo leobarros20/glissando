@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glissando</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0d12'/%3E%3Cpath d='M12 42 C24 10 40 54 52 22' fill='none' stroke='%235ec8ff' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   html, body {
@@ -820,6 +821,7 @@
   <div id="botSettings">
     <div class="module">
       <button class="pill" id="fingersToggle">finger positions: on</button>
+      <button class="pill" id="holdToggle">hold: off</button>
     </div>
     <div class="module">
       <div class="group">
@@ -1935,16 +1937,17 @@ const Hud = (() => {
   });
 
   Dropdown.make('modeDd', {
-    value: State.mode === 'both' ? 'local' : State.mode,
+    value: State.mode,
     options: [
       { value: 'local', label: 'browser synth' },
       { value: 'midi',  label: 'midi controller' },
+      { value: 'both',  label: 'both (synth + midi)' },
     ],
     onChange: v => {
       State.setMode(v);
       updateModeBtn();
       Analytics.track('change_output_mode', { mode: v });
-      if (v === 'midi') Analytics.markUsedMidiMode();
+      if (v === 'midi' || v === 'both') Analytics.markUsedMidiMode();
     },
   });
 
@@ -2011,12 +2014,12 @@ const Hud = (() => {
   });
 
   function updateModeBtn() {
-    const mode = State.mode === 'both' ? 'local' : State.mode;
+    const mode = State.mode;
     modeBtn.classList.remove('mode-local', 'mode-midi', 'mode-both', 'no-conn');
     modeBtn.classList.add('mode-' + mode);
-    const labels = { local: 'output: synth', midi: 'output: midi' };
+    const labels = { local: 'output: synth', midi: 'output: midi', both: 'output: both' };
     let txt = labels[mode] || mode;
-    if (mode === 'midi' && !MidiOut.connected) {
+    if ((mode === 'midi' || mode === 'both') && !MidiOut.connected) {
       modeBtn.classList.add('no-conn');
       txt = labels[mode] + ' · offline';
     }
@@ -2425,6 +2428,20 @@ fingerToggle.addEventListener('click', () => {
   try { localStorage.setItem('glissando.fingers', fingersOn ? '1' : '0'); } catch(_){}
   applyFingerToggle();
   Analytics.track('toggle_finger_positions', { state: fingersOn ? 'on' : 'off' });
+});
+
+// Hold toggle: sustain local synth voices until hold is turned off or panic is pressed.
+const holdToggle = document.getElementById('holdToggle');
+function applyHoldToggle() {
+  holdToggle.textContent = 'hold: ' + (State.hold ? 'on' : 'off');
+  holdToggle.classList.toggle('on', State.hold);
+}
+applyHoldToggle();
+holdToggle.addEventListener('click', () => {
+  State.setHold(!State.hold);
+  if (!State.hold) Controller.releaseHeld();
+  applyHoldToggle();
+  Analytics.track('toggle_hold', { state: State.hold ? 'on' : 'off' });
 });
 
 // Panic tooltip — tap toggle for mobile (since hover doesn't exist)
