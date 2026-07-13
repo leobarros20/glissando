@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glissando Text Editor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0d12'/%3E%3Cpath d='M16 18h32M16 32h24M16 46h32' stroke='%235ec8ff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg: #0a0d12;
+    --panel: #111722;
+    --panel-2: #151d2a;
+    --line: rgba(255,255,255,0.10);
+    --text: #e6e8ec;
+    --muted: #8a93a3;
+    --soft: #c1c8d4;
+    --accent: #5ec8ff;
+    --accent-2: #7ddc91;
+    --warn: #ffd166;
+  }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  body { overflow: hidden; }
+  button, input, select, textarea {
+    font: inherit;
+  }
+  button, .file-button, .download-button {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    min-height: 34px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  button:hover, .file-button:hover, .download-button:hover {
+    border-color: rgba(94,200,255,0.45);
+    background: rgba(94,200,255,0.12);
+  }
+  button.primary, .download-button.primary {
+    border-color: rgba(94,200,255,0.45);
+    background: rgba(94,200,255,0.18);
+  }
+  button:disabled, .download-button.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .app {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+  }
+  header {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(10,13,18,0.94);
+  }
+  h1 {
+    margin: 0;
+    font-size: 17px;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  .sub {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  main {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 310px 1fr;
+  }
+  aside {
+    min-height: 0;
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+  }
+  .controls {
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+  .field {
+    display: grid;
+    gap: 5px;
+  }
+  label {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  input[type="search"], select {
+    width: 100%;
+    min-height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    padding: 0 10px;
+    outline: none;
+  }
+  input[type="search"]:focus, select:focus, textarea:focus {
+    border-color: rgba(94,200,255,0.55);
+  }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--soft);
+    font-size: 12px;
+  }
+  .check-row input {
+    width: 16px;
+    height: 16px;
+  }
+  .stats {
+    padding: 0 14px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px;
+    background: rgba(255,255,255,0.035);
+  }
+  .stat strong {
+    display: block;
+    font-size: 19px;
+  }
+  .stat span {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .groups {
+    min-height: 0;
+    overflow: auto;
+    padding: 0 14px 14px;
+  }
+  .group-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    color: var(--soft);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 12px;
+  }
+  .workspace {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: #0c1118;
+  }
+  .list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,0.025);
+  }
+  .status {
+    color: var(--muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .list-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .string-list {
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    display: grid;
+    align-content: start;
+    gap: 10px;
+  }
+  .empty {
+    color: var(--muted);
+    padding: 36px 0;
+    text-align: center;
+  }
+  .row {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-2);
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+  .row.changed {
+    border-color: rgba(125,220,145,0.45);
+    box-shadow: inset 3px 0 0 rgba(125,220,145,0.75);
+  }
+  .row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 8px;
+    color: var(--soft);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .pill.advanced { color: var(--warn); }
+  .source-loc {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.22);
+    color: var(--text);
+    padding: 9px 10px;
+    outline: none;
+    line-height: 1.45;
+  }
+  textarea[readonly] {
+    color: var(--muted);
+    background: rgba(0,0,0,0.14);
+  }
+  .row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 14px;
+    border-top: 1px solid var(--line);
+    background: rgba(10,13,18,0.94);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .hidden { display: none !important; }
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+    .app { height: auto; min-height: 100vh; }
+    header { grid-template-columns: 1fr; }
+    .actions { justify-content: flex-start; }
+    main { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    .groups { max-height: 170px; }
+    .pair { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Glissando Text Editor</h1>
+      <div class="sub">Edit strings, then save a complete updated index.html.</div>
+    </div>
+    <div class="actions">
+      <button id="loadSibling" type="button">Load index.html</button>
+      <label class="file-button" for="sourceFile">Open file</label>
+      <input id="sourceFile" class="hidden" type="file" accept=".html,text/html">
+      <button id="saveAs" class="primary" type="button" disabled>Save as index.html</button>
+      <a id="downloadLink" class="download-button primary disabled" download="index.html">Download index.html</a>
+    </div>
+  </header>
+
+  <main>
+    <aside>
+      <div class="controls">
+        <div class="field">
+          <label for="search">Search</label>
+          <input id="search" type="search" placeholder="Find a string">
+        </div>
+        <div class="field">
+          <label for="groupFilter">Group</label>
+          <select id="groupFilter"></select>
+        </div>
+        <label class="check-row">
+          <input id="changedOnly" type="checkbox">
+          Show changed only
+        </label>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong id="totalCount">0</strong><span>strings</span></div>
+        <div class="stat"><strong id="changedCount">0</strong><span>changed</span></div>
+      </div>
+      <div id="groupCounts" class="groups"></div>
+    </aside>
+
+    <section class="workspace">
+      <div class="list-head">
+        <div id="status" class="status">Load index.html from this folder or open an HTML file.</div>
+        <div class="list-actions">
+          <button id="showAllMatches" type="button" hidden>Show all</button>
+          <button id="resetAll" type="button" disabled>Reset edits</button>
+        </div>
+      </div>
+      <div id="stringList" class="string-list">
+        <div class="empty">No source loaded.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="saveHint">Best flow: serve this folder locally, edit, then save/download index.html.</span>
+    <span id="sourceName">No file</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const els = {
+    loadSibling: document.getElementById('loadSibling'),
+    sourceFile: document.getElementById('sourceFile'),
+    saveAs: document.getElementById('saveAs'),
+    downloadLink: document.getElementById('downloadLink'),
+    search: document.getElementById('search'),
+    groupFilter: document.getElementById('groupFilter'),
+    changedOnly: document.getElementById('changedOnly'),
+    showAllMatches: document.getElementById('showAllMatches'),
+    resetAll: document.getElementById('resetAll'),
+    totalCount: document.getElementById('totalCount'),
+    changedCount: document.getElementById('changedCount'),
+    groupCounts: document.getElementById('groupCounts'),
+    status: document.getElementById('status'),
+    stringList: document.getElementById('stringList'),
+    sourceName: document.getElementById('sourceName'),
+    saveHint: document.getElementById('saveHint'),
+  };
+
+  let sourceText = '';
+  let sourceLabel = '';
+  let tokens = [];
+  let edits = new Map();
+  let downloadUrl = '';
+  let showAllMatches = false;
+
+  const MAX_RENDERED = 120;
+
+  const GROUPS = {
+    htmlText: 'HTML text',
+    htmlAttr: 'HTML attribute',
+    jsString: 'JavaScript string',
+  };
+
+  function setStatus(text) {
+    els.status.textContent = text;
+  }
+
+  function isInsideRange(index, ranges) {
+    return ranges.some(range => index >= range.start && index < range.end);
+  }
+
+  function lineForIndex(source, index) {
+    let line = 1;
+    for (let i = 0; i < index; i++) {
+      if (source.charCodeAt(i) === 10) line++;
+    }
+    return line;
+  }
+
+  function decodeHtml(value) {
+    const box = document.createElement('textarea');
+    box.innerHTML = value;
+    return box.value;
+  }
+
+  function escapeHtmlText(value) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function escapeHtmlAttr(value) {
+    return escapeHtmlText(value).replace(/"/g, '&quot;');
+  }
+
+  function unescapeJsString(raw) {
+    return raw
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\`/g, '`')
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'")
+      .replace(/\\\\/g, '\\');
+  }
+
+  function escapeJsString(value, quote) {
+    let out = value
+      .replace(/\\/g, '\\\\')
+      .replace(/\r/g, '\\r')
+      .replace(/\n/g, '\\n')
+      .replace(/\t/g, '\\t');
+    if (quote === "'") out = out.replace(/'/g, "\\'");
+    if (quote === '"') out = out.replace(/"/g, '\\"');
+    if (quote === '`') out = out.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+    return out;
+  }
+
+  function shouldShowString(value) {
+    const clean = value.trim();
+    if (!clean) return false;
+    if (/^data:image\//i.test(clean)) return false;
+    if (/^https?:\/\//i.test(clean)) return false;
+    return /[A-Za-z0-9?!.:,;+\-]/.test(clean) || clean.length === 1;
+  }
+
+  function addToken(out, token) {
+    if (!shouldShowString(token.original)) return;
+    token.id = 's' + out.length;
+    token.line = lineForIndex(sourceText, token.start);
+    out.push(token);
+  }
+
+  function collectBlockedRanges(source) {
+    const ranges = [];
+    const blockRe = /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi;
+    let match;
+    while ((match = blockRe.exec(source))) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+    return ranges;
+  }
+
+  function collectHtmlText(source, ranges, out) {
+    const textRe = />([^<]+)</g;
+    let match;
+    while ((match = textRe.exec(source))) {
+      const raw = match[1];
+      const start = match.index + 1;
+      if (isInsideRange(start, ranges)) continue;
+      const leading = raw.match(/^\s*/)[0].length;
+      const trailing = raw.match(/\s*$/)[0].length;
+      const trimmed = raw.slice(leading, raw.length - trailing);
+      if (!trimmed) continue;
+      addToken(out, {
+        group: 'htmlText',
+        label: 'Text node',
+        start: start + leading,
+        end: start + raw.length - trailing,
+        original: decodeHtml(trimmed),
+        rawOriginal: trimmed,
+        quote: '',
+      });
+    }
+  }
+
+  function collectHtmlAttributes(source, ranges, out) {
+    const attrRe = /\s(title|aria-label|placeholder|alt|value)="([^"]*)"/gi;
+    let match;
+    while ((match = attrRe.exec(source))) {
+      const start = match.index + match[0].indexOf('"') + 1;
+      if (isInsideRange(start, ranges)) continue;
+      addToken(out, {
+        group: 'htmlAttr',
+        label: match[1],
+        start,
+        end: start + match[2].length,
+        original: decodeHtml(match[2]),
+        rawOriginal: match[2],
+        quote: '"',
+      });
+    }
+  }
+
+  function collectJavaScriptStrings(source, out) {
+    const scriptRe = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    let match;
+    while ((match = scriptRe.exec(source))) {
+      const scriptStart = match.index + match[0].indexOf(match[1]);
+      scanJsStrings(match[1], scriptStart, out);
+    }
+  }
+
+  function scanJsStrings(code, absoluteStart, out) {
+    let i = 0;
+    while (i < code.length) {
+      const ch = code[i];
+      const next = code[i + 1];
+      if (ch === '/' && next === '/') {
+        i += 2;
+        while (i < code.length && code[i] !== '\n') i++;
+        continue;
+      }
+      if (ch === '/' && next === '*') {
+        i += 2;
+        while (i < code.length && !(code[i] === '*' && code[i + 1] === '/')) i++;
+        i += 2;
+        continue;
+      }
+      if (ch !== "'" && ch !== '"' && ch !== '`') {
+        i++;
+        continue;
+      }
+
+      const quote = ch;
+      const contentStart = i + 1;
+      i++;
+      let escaped = false;
+      while (i < code.length) {
+        const c = code[i];
+        if (escaped) {
+          escaped = false;
+          i++;
+          continue;
+        }
+        if (c === '\\') {
+          escaped = true;
+          i++;
+          continue;
+        }
+        if (c === quote) break;
+        i++;
+      }
+      if (i >= code.length) break;
+      const contentEnd = i;
+      const raw = code.slice(contentStart, contentEnd);
+      const original = unescapeJsString(raw);
+      addToken(out, {
+        group: 'jsString',
+        label: quote === '`' ? 'Template literal' : 'String literal',
+        start: absoluteStart + contentStart,
+        end: absoluteStart + contentEnd,
+        original,
+        rawOriginal: raw,
+        quote,
+      });
+      i++;
+    }
+  }
+
+  function collectEditableStrings(source) {
+    sourceText = source;
+    const out = [];
+    const ranges = collectBlockedRanges(source);
+    collectHtmlText(source, ranges, out);
+    collectHtmlAttributes(source, ranges, out);
+    collectJavaScriptStrings(source, out);
+    return out;
+  }
+
+  function replacementFor(token, value) {
+    if (token.group === 'htmlText') return escapeHtmlText(value);
+    if (token.group === 'htmlAttr') return escapeHtmlAttr(value);
+    return escapeJsString(value, token.quote);
+  }
+
+  function applyEdits() {
+    const changed = tokens
+      .filter(token => edits.has(token.id) && edits.get(token.id) !== token.original)
+      .sort((a, b) => b.start - a.start);
+    let output = sourceText;
+    for (const token of changed) {
+      const value = replacementFor(token, edits.get(token.id));
+      output = output.slice(0, token.start) + value + output.slice(token.end);
+    }
+    return output;
+  }
+
+  function groupCounts() {
+    const counts = new Map();
+    for (const token of tokens) {
+      counts.set(token.group, (counts.get(token.group) || 0) + 1);
+    }
+    return counts;
+  }
+
+  function changedCount() {
+    let count = 0;
+    for (const token of tokens) {
+      if (edits.has(token.id) && edits.get(token.id) !== token.original) count++;
+    }
+    return count;
+  }
+
+  function updateDownloadLink() {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    if (!sourceText) {
+      els.downloadLink.removeAttribute('href');
+      els.downloadLink.classList.add('disabled');
+      els.saveAs.disabled = true;
+      return;
+    }
+    const blob = new Blob([applyEdits()], { type: 'text/html;charset=utf-8' });
+    downloadUrl = URL.createObjectURL(blob);
+    els.downloadLink.href = downloadUrl;
+    els.downloadLink.classList.remove('disabled');
+    els.saveAs.disabled = false;
+  }
+
+  function renderFilters() {
+    const current = els.groupFilter.value || 'all';
+    const counts = groupCounts();
+    els.groupFilter.innerHTML = '';
+    const all = document.createElement('option');
+    all.value = 'all';
+    all.textContent = 'All strings';
+    els.groupFilter.appendChild(all);
+    for (const [group, label] of Object.entries(GROUPS)) {
+      if (!counts.has(group)) continue;
+      const opt = document.createElement('option');
+      opt.value = group;
+      opt.textContent = label;
+      els.groupFilter.appendChild(opt);
+    }
+    els.groupFilter.value = counts.has(current) || current === 'all' ? current : 'all';
+
+    els.groupCounts.innerHTML = '';
+    for (const [group, count] of counts.entries()) {
+      const line = document.createElement('div');
+      line.className = 'group-line';
+      line.innerHTML = `<span>${GROUPS[group] || group}</span><strong>${count}</strong>`;
+      els.groupCounts.appendChild(line);
+    }
+  }
+
+  function visibleTokens() {
+    const q = els.search.value.trim().toLowerCase();
+    const group = els.groupFilter.value || 'all';
+    const onlyChanged = els.changedOnly.checked;
+    return tokens.filter(token => {
+      const editValue = edits.has(token.id) ? edits.get(token.id) : token.original;
+      const isChanged = editValue !== token.original;
+      if (onlyChanged && !isChanged) return false;
+      if (group !== 'all' && token.group !== group) return false;
+      if (!q) return true;
+      return token.original.toLowerCase().includes(q) ||
+        editValue.toLowerCase().includes(q) ||
+        token.label.toLowerCase().includes(q) ||
+        (GROUPS[token.group] || token.group).toLowerCase().includes(q);
+    });
+  }
+
+  function renderList() {
+    const allMatches = visibleTokens();
+    const list = showAllMatches ? allMatches : allMatches.slice(0, MAX_RENDERED);
+    els.stringList.innerHTML = '';
+    if (!sourceText) {
+      els.stringList.innerHTML = '<div class="empty">No source loaded.</div>';
+      return;
+    }
+    if (!allMatches.length) {
+      els.stringList.innerHTML = '<div class="empty">No matching strings.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const token of list) {
+      const value = edits.has(token.id) ? edits.get(token.id) : token.original;
+      const changed = value !== token.original;
+      const row = document.createElement('article');
+      row.className = 'row' + (changed ? ' changed' : '');
+      row.dataset.id = token.id;
+
+      const top = document.createElement('div');
+      top.className = 'row-top';
+      top.innerHTML = `
+        <div>
+          <span class="pill ${token.group === 'jsString' ? 'advanced' : ''}">${GROUPS[token.group] || token.group}</span>
+          <span class="pill">${token.label}</span>
+        </div>
+        <div class="source-loc">line ${token.line}</div>
+      `;
+      row.appendChild(top);
+
+      const pair = document.createElement('div');
+      pair.className = 'pair';
+      const originalWrap = document.createElement('div');
+      const editWrap = document.createElement('div');
+      originalWrap.innerHTML = '<label>Original</label>';
+      editWrap.innerHTML = '<label>Edit</label>';
+      const originalArea = document.createElement('textarea');
+      originalArea.readOnly = true;
+      originalArea.value = token.original;
+      const editArea = document.createElement('textarea');
+      editArea.value = value;
+      editArea.addEventListener('input', () => {
+        edits.set(token.id, editArea.value);
+        row.classList.toggle('changed', editArea.value !== token.original);
+        updateStats();
+        updateDownloadLink();
+      });
+      originalWrap.appendChild(originalArea);
+      editWrap.appendChild(editArea);
+      pair.appendChild(originalWrap);
+      pair.appendChild(editWrap);
+      row.appendChild(pair);
+
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.textContent = 'Reset';
+      reset.addEventListener('click', () => {
+        edits.delete(token.id);
+        renderList();
+        updateStats();
+        updateDownloadLink();
+      });
+      actions.appendChild(reset);
+      row.appendChild(actions);
+      frag.appendChild(row);
+    }
+    if (!showAllMatches && allMatches.length > MAX_RENDERED) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.textContent = `Show all ${allMatches.length} matching strings`;
+      more.addEventListener('click', () => {
+        showAllMatches = true;
+        renderList();
+        updateStats();
+      });
+      frag.appendChild(more);
+    }
+    els.stringList.appendChild(frag);
+  }
+
+  function updateStats() {
+    els.totalCount.textContent = String(tokens.length);
+    els.changedCount.textContent = String(changedCount());
+    els.resetAll.disabled = changedCount() === 0;
+    const visible = visibleTokens().length;
+    els.showAllMatches.hidden = !sourceText || visible <= MAX_RENDERED;
+    els.showAllMatches.textContent = showAllMatches ? `Show first ${MAX_RENDERED}` : `Show all ${visible}`;
+    if (sourceText) {
+      const rendered = showAllMatches ? visible : Math.min(visible, MAX_RENDERED);
+      setStatus(`${rendered} of ${visible} visible strings from ${sourceLabel}. JavaScript strings are included for advanced edits.`);
+    }
+  }
+
+  function loadSource(text, label) {
+    sourceText = text;
+    sourceLabel = label;
+    sourceText = sourceText.replace(/^\uFEFF/, '');
+    edits = new Map();
+    tokens = collectEditableStrings(sourceText);
+    els.sourceName.textContent = label;
+    renderFilters();
+    renderList();
+    updateStats();
+    updateDownloadLink();
+  }
+
+  async function loadSiblingIndex() {
+    setStatus('Loading index.html...');
+    try {
+      const response = await fetch('index.html?copyEditor=' + Date.now(), { cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const text = await response.text();
+      loadSource(text, 'index.html');
+    } catch (error) {
+      setStatus('Could not load sibling index.html. Use Open file instead.');
+    }
+  }
+
+  async function saveWithPicker() {
+    const output = applyEdits();
+    if (!window.showSaveFilePicker) {
+      els.downloadLink.click();
+      return;
+    }
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: 'index.html',
+        types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(output);
+      await writable.close();
+      setStatus('Saved index.html.');
+    } catch (error) {
+      if (error && error.name !== 'AbortError') setStatus('Save failed. Use Download index.html.');
+    }
+  }
+
+  els.loadSibling.addEventListener('click', loadSiblingIndex);
+  els.sourceFile.addEventListener('change', async () => {
+    const file = els.sourceFile.files && els.sourceFile.files[0];
+    if (!file) return;
+    const text = await file.text();
+    loadSource(text, file.name);
+  });
+  els.search.addEventListener('input', () => {
+    showAllMatches = false;
+    renderList();
+    updateStats();
+  });
+  els.groupFilter.addEventListener('change', () => {
+    showAllMatches = false;
+    renderList();
+    updateStats();
+  });
+  els.changedOnly.addEventListener('change', () => {
+    showAllMatches = false;
+    renderList();
+    updateStats();
+  });
+  els.showAllMatches.addEventListener('click', () => {
+    showAllMatches = !showAllMatches;
+    renderList();
+    updateStats();
+  });
+  els.resetAll.addEventListener('click', () => {
+    edits = new Map();
+    renderList();
+    updateStats();
+    updateDownloadLink();
+  });
+  els.saveAs.addEventListener('click', saveWithPicker);
+
+  window.addEventListener('beforeunload', () => {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+  });
+
+  loadSiblingIndex();
+})();
+</script>
+</body>
+</html>

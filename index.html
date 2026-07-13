@@ -679,6 +679,29 @@
   .popup-help h3:first-child { margin-top: 0; }
   .popup-help p { margin: 0 0 10px; }
   .popup-help strong { color: #e6e8ec; }
+  .popup-help ol {
+    margin: 8px 0 18px;
+    padding-left: 22px;
+  }
+  .popup-help li { margin-bottom: 9px; padding-left: 3px; }
+  .popup-help details {
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .popup-help details:last-of-type {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 14px;
+  }
+  .popup-help summary {
+    color: #d8dce2;
+    cursor: pointer;
+    padding: 10px 2px;
+    font: 600 11px ui-monospace, monospace;
+    letter-spacing: .06em;
+  }
+  .popup-help details p {
+    margin: 0 2px 12px;
+    color: #929aa7;
+  }
   .popup-help a {
     color: #5ec8ff;
     text-decoration: none;
@@ -812,7 +835,7 @@
   </div>
 
   <div class="spacer"></div>
-  <button class="icon-btn" id="helpBtn" title="how to connect">?</button>
+  <button class="icon-btn" id="helpBtn" title="quick setup">?</button>
 </div>
 
 <!-- BOTTOM BAR: finger readouts (left) + settings (right) -->
@@ -847,13 +870,13 @@
 </div>
 
 <div id="midiPanel">
-  <h3>output destination</h3>
+  <h3>sound output</h3>
   <div class="row">
-    <label>where to</label>
+    <label>play through</label>
     <div class="dd" id="modeDd" style="flex:1"></div>
   </div>
   <div class="row" id="midiDeviceRow">
-    <label>midi device</label>
+    <label>midi output</label>
     <div class="dd" id="midiDeviceDd" style="flex:1"></div>
   </div>
   <div class="row">
@@ -862,12 +885,11 @@
       <span id="midiStatus">disconnected</span>
     </div>
     <div class="spacer" style="flex:1"></div>
-    <button class="pill" id="midiRetry">retry</button>
+    <button class="pill" id="midiRetry">enable midi</button>
   </div>
   <div class="help" id="midiHelp">
-    <strong>browser synth</strong> plays inside this page.<br>
-    <strong>midi controller</strong> sends MPE to your selected MIDI device.<br>
-    <strong>both</strong> does both at once.
+    <strong>browser synth</strong> works immediately.<br>
+    Choose <strong>midi controller</strong> to play an instrument in your DAW.
   </div>
 </div>
 
@@ -879,9 +901,9 @@
     <div class="popup-view" data-view="start">
       <h1 class="popup-title">Glissando</h1>
       <p class="popup-sub">expressive multi-touch instrument</p>
-      <button class="popup-cta" id="popupStartBtn">start</button>
+      <button class="popup-cta" id="popupStartBtn">play</button>
       <div class="popup-row-actions">
-        <button class="popup-link" data-goto="help">how to connect</button>
+        <button class="popup-link" data-goto="help">connect to a DAW</button>
       </div>
       <div class="popup-tip">use headphones</div>
     </div>
@@ -889,27 +911,32 @@
     <!-- HELP VIEW -->
     <div class="popup-view hidden" data-view="help">
       <button class="popup-back" data-goto="start">← back</button>
-      <h2 class="popup-title-sm">How to connect</h2>
+      <h2 class="popup-title-sm">Quick setup</h2>
       <div class="popup-help">
-        <h3>Browser synth (no setup)</h3>
-        <p>The default mode. Sound plays through this page. Use headphones for best results.</p>
+        <h3>Just want to play?</h3>
+        <p>Tap <strong>Play</strong>. The browser synth needs no setup.</p>
 
-        <h3>MIDI controller (Ableton, Logic, etc.)</h3>
-        <p>Glissando sends MPE messages over Web MIDI to any DAW or software synth on the same device.</p>
+        <h3>Play an instrument in your DAW</h3>
+        <ol>
+          <li>Create one MIDI port using the short guide for your device below.</li>
+          <li>In Glissando, tap <strong>output: synth</strong>, choose <strong>midi controller</strong>, then select that port.</li>
+          <li>In your DAW, choose the same port as the track input, arm the track, and load an MPE instrument.</li>
+        </ol>
 
-        <p><strong>On Mac:</strong> create an IAC bus in Audio MIDI Setup (built into macOS). In Ableton's MIDI preferences, enable Track + MPE for the IAC bus. Glissando will auto-select it.</p>
+        <details>
+          <summary>Mac</summary>
+          <p>Open <strong>Audio MIDI Setup</strong> → <strong>MIDI Studio</strong> → <strong>IAC Driver</strong>. Turn on <strong>Device is online</strong>. Use <strong>IAC Bus 1</strong> in Glissando and your DAW.</p>
+        </details>
+        <details>
+          <summary>Windows</summary>
+          <p>Install and open <a href="https://www.tobias-erichsen.de/software/loopmidi.html" target="_blank" rel="noopener">loopMIDI</a>. Create a port called <strong>Glissando</strong>, then choose it in Glissando and your DAW.</p>
+        </details>
+        <details>
+          <summary>Android tablet + laptop</summary>
+          <p>Connect the tablet by USB and choose <strong>MIDI</strong> as its USB mode. Select the tablet as the MIDI output in Glissando and as the track input in your DAW.</p>
+        </details>
 
-        <p><strong>On Windows:</strong> install <a href="https://www.tobias-erichsen.de/software/loopmidi.html" target="_blank" rel="noopener">loopMIDI</a> (one-time, free). Create a port named "Glissando". In Ableton's MIDI prefs, enable Track + MPE for that port.</p>
-
-        <p><strong>On Android tablet → laptop via USB:</strong> plug the tablet into your laptop. On the tablet, change USB mode to "MIDI". The tablet appears as a native MIDI device on the laptop. Open Glissando in Chrome on the tablet, switch output to MIDI, pick "Glissando" or your tablet's name on the laptop side.</p>
-
-        <h3>Ableton track setup</h3>
-        <p>Create a MIDI track, set input to your MIDI device, arm the track, drop an MPE-aware instrument (Wavetable, Vital, Surge XT, ROLI Equator). Enable MPE for the input under Preferences → MIDI.</p>
-
-        <h3>Controls</h3>
-        <p><strong>Snap modes:</strong> <em>free</em> = continuous pitch, <em>pull</em> = gravity wells around tonics and fifths, <em>lock</em> = locks to scale notes.</p>
-        <p><strong>Slide ↑ / Slide ↓:</strong> what your Y-axis (vertical finger position) controls. Affects the browser synth only — MIDI output always sends CC74 (the MPE standard) for Ableton's instrument to map.</p>
-        <p><strong>Panic:</strong> instantly silences all sound. Use if any notes get stuck.</p>
+        <p><strong>Ableton:</strong> In Settings → Link, Tempo &amp; MIDI, enable Track and MPE for the port. Wavetable, Drift, Vital, and Surge XT are good instruments to try.</p>
       </div>
     </div>
   </div>
@@ -1987,7 +2014,7 @@ const Hud = (() => {
     if (!s.supported) {
       midiStatus.textContent = 'web midi not supported in this browser';
     } else if (s.permission !== 'granted') {
-      midiStatus.textContent = 'tap retry to enable midi';
+      midiStatus.textContent = 'tap enable midi';
     } else if (s.outputs.length === 0) {
       midiStatus.textContent = 'no midi devices found';
     } else if (s.connected) {
@@ -2039,6 +2066,8 @@ const Controller = (() => {
   const heldVoices = [];
   let nextColorIdx = 0;
   const touchEl = document.getElementById('touchLayer');
+  const nearLineOwners = new Map();
+  const NEAR_OWNER_SWITCH_SEMITONES = 0.08;
 
   State.on(evt => { if (evt === 'scale') GridView.build(); });
   window.addEventListener('resize', () => GridView.build());
@@ -2113,8 +2142,15 @@ const Controller = (() => {
     else if (f.voice) f.voice.release();
     if (State.usesMidiOut) MidiOut.fingerUp(e.pointerId);
     fingers.delete(e.pointerId);
+    releaseNearLineOwnersForFinger(e.pointerId);
     const idx = arrivalOrder.indexOf(e.pointerId);
     if (idx !== -1) arrivalOrder.splice(idx, 1);
+  }
+
+  function releaseNearLineOwnersForFinger(pointerId) {
+    for (const [midi, ownerId] of nearLineOwners) {
+      if (ownerId === pointerId) nearLineOwners.delete(midi);
+    }
   }
   touchEl.addEventListener('pointerdown', onDown);
   touchEl.addEventListener('pointermove', onMove);
@@ -2132,9 +2168,15 @@ const Controller = (() => {
   */
   function computeNearMap() {
     const map = new Map();
-    if (fingers.size === 0) return map;
+    if (fingers.size === 0) {
+      nearLineOwners.clear();
+      return map;
+    }
     const notes = State.notes;
-    if (notes.length === 0) return map;
+    if (notes.length === 0) {
+      nearLineOwners.clear();
+      return map;
+    }
     const W = TouchView.W || window.innerWidth;
     const H = TouchView.H || window.innerHeight;
     const pad = State.pad * 100;
@@ -2194,11 +2236,22 @@ const Controller = (() => {
       }
     }
 
-    // Resolve: for each line, pick the candidate from the finger with the
-    // smallest pitch distance to that line. That finger "owns" the visual.
+    for (const midi of nearLineOwners.keys()) {
+      if (!candidates.has(midi)) nearLineOwners.delete(midi);
+    }
+
+    // Resolve: for each line, keep the current owner unless another finger is
+    // clearly closer. This prevents close fingers from swapping the same line
+    // every frame and making the bend/hint visuals collapse together.
     for (const [midi, list] of candidates) {
       list.sort((a, b) => a.pitchDist - b.pitchDist);
-      const winner = list[0];
+      const best = list[0];
+      const currentOwner = nearLineOwners.get(midi);
+      const ownedCandidate = list.find(item => item.fingerId === currentOwner);
+      const winner = (ownedCandidate && ownedCandidate.pitchDist <= best.pitchDist + NEAR_OWNER_SWITCH_SEMITONES)
+        ? ownedCandidate
+        : best;
+      nearLineOwners.set(midi, winner.fingerId);
       map.set(midi, winner);
     }
     return map;
@@ -2265,6 +2318,7 @@ const Controller = (() => {
     panic() {
       for (const f of fingers.values()) if (f.voice) f.voice.release();
       fingers.clear();
+      nearLineOwners.clear();
       arrivalOrder.length = 0;
       while (heldVoices.length) heldVoices.pop().release();
       GridView.clearAllHints();
