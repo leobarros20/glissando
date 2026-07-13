@@ -702,6 +702,9 @@
     margin: 0 2px 12px;
     color: #929aa7;
   }
+  .popup-help .popup-cta {
+    margin: 10px 0 20px;
+  }
   .popup-help a {
     color: #5ec8ff;
     text-decoration: none;
@@ -914,7 +917,8 @@
       <h2 class="popup-title-sm">Quick setup</h2>
       <div class="popup-help">
         <h3>Just want to play?</h3>
-        <p>Tap <strong>Play</strong>. The browser synth needs no setup.</p>
+        <p>The browser synth needs no setup.</p>
+        <button class="popup-cta" id="popupHelpPlayBtn">play now</button>
 
         <h3>Play an instrument in your DAW</h3>
         <ol>
@@ -2450,14 +2454,20 @@ const Popup = (() => {
   return { show, hide };
 })();
 
-// Start button: hide popup, kick off audio + MIDI (require user gesture)
-document.getElementById('popupStartBtn').addEventListener('click', async () => {
+// Start from either popup view. Later clicks simply return to the instrument.
+let appStarted = false;
+async function startGlissando() {
   Popup.hide();
+  if (appStarted) return;
+  appStarted = true;
   Analytics.track('session_start');
   try { await screen.orientation.lock('landscape'); } catch(_){}
   try { await navigator.wakeLock.request('screen'); } catch(_){}
   Controller.start();
   MidiOut.init();
+}
+['popupStartBtn', 'popupHelpPlayBtn'].forEach(id => {
+  document.getElementById(id).addEventListener('click', startGlissando);
 });
 
 // Help button (top bar) — open popup in help view

@@ -56,3 +56,11 @@ test('connection help keeps the main path short and hides platform details', () 
   assert.match(html, /<summary>Android tablet \+ laptop<\/summary>/);
   assert.doesNotMatch(html, /<h3>Controls<\/h3>/);
 });
+
+test('play works directly from the connection help view', () => {
+  assert.match(html, /id="popupHelpPlayBtn">play now<\/button>/);
+  assert.match(html, /async function startGlissando\(\)/);
+  assert.match(html, /\['popupStartBtn', 'popupHelpPlayBtn'\]\.forEach/);
+  assert.match(html, /if \(appStarted\) return/);
+  assert.match(html, /Controller\.start\(\);[\s\S]*MidiOut\.init\(\);/);
+});
