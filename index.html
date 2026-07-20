@@ -1298,6 +1298,9 @@ const Audio = (() => {
       del.output.connect(masterGain);
       masterGain.connect(actx.destination);
     },
+    resume() {
+      if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
+    },
     Voice,
     get ready() { return actx !== null; }
   };
@@ -2456,15 +2459,22 @@ const Popup = (() => {
 
 // Start from either popup view. Later clicks simply return to the instrument.
 let appStarted = false;
-async function startGlissando() {
+function startGlissando() {
   Popup.hide();
-  if (appStarted) return;
-  appStarted = true;
+  if (appStarted) {
+    Audio.resume();
+    return;
+  }
   Analytics.track('session_start');
-  try { await screen.orientation.lock('landscape'); } catch(_){}
-  try { await navigator.wakeLock.request('screen'); } catch(_){}
+
+  // Audio and MIDI must start during the tap itself. Awaiting anything first
+  // can consume the browser's user activation and leave the instrument silent.
   Controller.start();
   MidiOut.init();
+  appStarted = true;
+
+  try { screen.orientation.lock('landscape').catch(() => {}); } catch(_){}
+  try { navigator.wakeLock.request('screen').catch(() => {}); } catch(_){}
 }
 ['popupStartBtn', 'popupHelpPlayBtn'].forEach(id => {
   document.getElementById(id).addEventListener('click', startGlissando);

@@ -59,8 +59,25 @@ test('connection help keeps the main path short and hides platform details', () 
 
 test('play works directly from the connection help view', () => {
   assert.match(html, /id="popupHelpPlayBtn">play now<\/button>/);
-  assert.match(html, /async function startGlissando\(\)/);
+  assert.match(html, /function startGlissando\(\)/);
   assert.match(html, /\['popupStartBtn', 'popupHelpPlayBtn'\]\.forEach/);
-  assert.match(html, /if \(appStarted\) return/);
+  assert.match(html, /if \(appStarted\) \{[\s\S]*Audio\.resume\(\);[\s\S]*return;/);
   assert.match(html, /Controller\.start\(\);[\s\S]*MidiOut\.init\(\);/);
+});
+
+test('audio and MIDI start before optional device requests consume the tap gesture', () => {
+  const startFunction = html.slice(
+    html.indexOf('function startGlissando()'),
+    html.indexOf("['popupStartBtn', 'popupHelpPlayBtn']")
+  );
+  const controllerStart = startFunction.indexOf('Controller.start();');
+  const midiStart = startFunction.indexOf('MidiOut.init();');
+  const orientationLock = startFunction.indexOf("screen.orientation.lock('landscape')");
+  const wakeLock = startFunction.indexOf("navigator.wakeLock.request('screen')");
+
+  assert.ok(controllerStart !== -1 && controllerStart < orientationLock);
+  assert.ok(midiStart !== -1 && midiStart < orientationLock);
+  assert.ok(controllerStart < wakeLock && midiStart < wakeLock);
+  assert.doesNotMatch(startFunction, /await/);
+  assert.match(html, /resume\(\) \{[\s\S]*actx\.state === 'suspended'[\s\S]*actx\.resume\(\)/);
 });
