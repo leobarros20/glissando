@@ -46,15 +46,18 @@ test('near-line visual ownership is stable when close fingers compete', () => {
   assert.match(html, /releaseNearLineOwnersForFinger/);
 });
 
-test('connection help keeps the main path short and hides platform details', () => {
+test('connection help is web-only and keeps platform details optional', () => {
   assert.match(html, /connect to a DAW/);
   assert.match(html, /Just want to play\?/);
   assert.match(html, /Play an instrument in your DAW/);
-  assert.match(html, /<ol>[\s\S]*Create one MIDI port[\s\S]*output: synth[\s\S]*arm the track[\s\S]*<\/ol>/);
-  assert.match(html, /<details>[\s\S]*<summary>Mac<\/summary>/);
-  assert.match(html, /<summary>Windows<\/summary>/);
+  assert.match(html, /<ol>[\s\S]*Connect MIDI[\s\S]*arm the track[\s\S]*test note[\s\S]*<\/ol>/);
+  assert.match(html, /<summary>No output\? Mac<\/summary>/);
+  assert.match(html, /<summary>No output\? Windows<\/summary>/);
   assert.match(html, /<summary>Android tablet \+ laptop<\/summary>/);
   assert.doesNotMatch(html, /<h3>Controls<\/h3>/);
+  assert.doesNotMatch(html, /loopMIDI|Install and open|new WebSocket/);
+  assert.match(html, /id="dawGuideSelect"/);
+  assert.match(html, /not a verified compatibility list/);
 });
 
 test('play works directly from the connection help view', () => {
@@ -62,22 +65,23 @@ test('play works directly from the connection help view', () => {
   assert.match(html, /function startGlissando\(\)/);
   assert.match(html, /\['popupStartBtn', 'popupHelpPlayBtn'\]\.forEach/);
   assert.match(html, /if \(appStarted\) \{[\s\S]*Audio\.resume\(\);[\s\S]*return;/);
-  assert.match(html, /Controller\.start\(\);[\s\S]*MidiOut\.init\(\);/);
+  assert.match(html, /closeBtn\.addEventListener\('click', startGlissando\)/);
+  assert.match(html, /function onDown\(e\)[\s\S]*startGlissando\(\)/);
+  assert.match(html, /id="popupBackdrop" class="popup-backdrop" inert aria-hidden="true"/);
 });
 
-test('audio and MIDI start before optional device requests consume the tap gesture', () => {
+test('audio starts in the gesture and does not request MIDI permission', () => {
   const startFunction = html.slice(
     html.indexOf('function startGlissando()'),
     html.indexOf("['popupStartBtn', 'popupHelpPlayBtn']")
   );
   const controllerStart = startFunction.indexOf('Controller.start();');
-  const midiStart = startFunction.indexOf('MidiOut.init();');
   const orientationLock = startFunction.indexOf("screen.orientation.lock('landscape')");
   const wakeLock = startFunction.indexOf("navigator.wakeLock.request('screen')");
 
   assert.ok(controllerStart !== -1 && controllerStart < orientationLock);
-  assert.ok(midiStart !== -1 && midiStart < orientationLock);
-  assert.ok(controllerStart < wakeLock && midiStart < wakeLock);
+  assert.ok(controllerStart < wakeLock);
+  assert.doesNotMatch(startFunction, /MidiOut\.(init|requestAccess)/);
   assert.doesNotMatch(startFunction, /await/);
   assert.match(html, /resume\(\) \{[\s\S]*actx\.state === 'suspended'[\s\S]*actx\.resume\(\)/);
 });

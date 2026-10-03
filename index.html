@@ -398,10 +398,13 @@
     bottom: var(--bot-bar-h); right: 12px;
     background: rgba(15, 19, 26, 0.97);
     border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 14px 14px 12px;
     z-index: 9;
-    width: 340px;
+    width: min(380px, calc(100vw - 24px));
+    box-sizing: border-box;
+    max-height: calc(100dvh - var(--bot-bar-h) - 20px);
+    overflow-y: auto;
     display: none;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -418,7 +421,12 @@
   #midiPanel .row {
     display: flex; align-items: center; gap: 8px;
     margin-bottom: 8px;
+    min-width: 0;
   }
+  #midiPanel .dd { min-width: 0; }
+  #midiPanel .dd-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  #midiPanel .actions { flex-wrap: wrap; }
+  #midiPanel .pill:disabled { opacity: .45; cursor: default; }
   #midiPanel label {
     flex-shrink: 0;
     font-size: 10px; letter-spacing: .08em;
@@ -439,10 +447,12 @@
   #midiPanel .status {
     display: flex; align-items: center; gap: 8px;
     font-size: 11px; color: #cfd3da;
+    overflow-wrap: anywhere;
   }
   #midiPanel .dot {
     width: 8px; height: 8px; border-radius: 50%;
-    background: #b34747;
+    flex-shrink: 0;
+    background: #929aa7;
     box-shadow: 0 0 8px currentColor;
     transition: background 0.2s;
   }
@@ -451,8 +461,8 @@
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid rgba(255,255,255,0.06);
-    font-size: 10px; line-height: 1.5;
-    color: #6a7280;
+    font-size: 12px; line-height: 1.5;
+    color: #a5adba;
   }
   #midiPanel .help code {
     background: rgba(255,255,255,0.05);
@@ -544,6 +554,13 @@
     flex: 1;
     justify-content: flex-end;
   }
+  @media (max-width: 1100px) {
+    #bar { right: 48px; }
+    #helpBtn { position: fixed; right: 12px; top: 12px; }
+    #botSettings { order: -1; flex: 0 0 auto; }
+    #outputControls { order: -1; border-left: 0; padding-left: 0; }
+    #modeBtn { min-width: 118px; min-height: 36px; white-space: nowrap; }
+  }
 
   /* ============ POPUP ============ */
   .popup-backdrop {
@@ -554,11 +571,13 @@
     z-index: 200;
     display: flex; align-items: center; justify-content: center;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
     transition: opacity .18s ease-out;
   }
   .popup-backdrop.visible {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
   }
   .popup {
@@ -711,6 +730,13 @@
     border-bottom: 1px dotted rgba(94, 200, 255, 0.4);
   }
   .popup-help a:hover { border-bottom-style: solid; }
+  #dawGuideSelect {
+    width: 100%; min-height: 40px; margin: 8px 0 12px;
+    background: #161c24; color: #e6e8ec;
+    border: 1px solid #596270; border-radius: 4px;
+    padding: 8px; font: inherit; letter-spacing: 0;
+  }
+  #dawGuideText { white-space: normal; }
 
   /* ============ ICON BUTTONS (help, info) ============ */
   .icon-btn {
@@ -859,7 +885,7 @@
         <div class="dd" id="yBotDd"></div>
       </div>
     </div>
-    <div class="module">
+    <div class="module" id="outputControls">
       <button class="pill mode-indicator" id="modeBtn">output: synth</button>
       <div class="tip-wrap" id="panicTip">
         <button class="pill" id="panic">panic</button>
@@ -885,20 +911,22 @@
   <div class="row">
     <div class="status">
       <span class="dot" id="midiDot"></span>
-      <span id="midiStatus">disconnected</span>
+      <span id="midiStatus" role="status">local sound ready</span>
     </div>
-    <div class="spacer" style="flex:1"></div>
-    <button class="pill" id="midiRetry">enable midi</button>
+  </div>
+  <div class="row actions">
+    <button class="pill" id="midiRetry">connect MIDI</button>
+    <button class="pill" id="midiTest" disabled>test note</button>
+    <button class="pill" id="midiGuide">connection help</button>
   </div>
   <div class="help" id="midiHelp">
-    <strong>browser synth</strong> works immediately.<br>
-    Choose <strong>midi controller</strong> to play an instrument in your DAW.
+    No installation. MIDI needs an output exposed by your device or operating system.
   </div>
 </div>
 
-<div id="popupBackdrop" class="popup-backdrop visible">
-  <div id="popup" class="popup">
-    <button class="popup-close" id="popupClose" title="close">×</button>
+<div id="popupBackdrop" class="popup-backdrop" inert aria-hidden="true">
+  <div id="popup" class="popup" role="dialog" aria-modal="true" aria-label="Glissando help">
+    <button class="popup-close" id="popupClose" title="close" aria-label="close help">×</button>
 
     <!-- START VIEW -->
     <div class="popup-view" data-view="start">
@@ -922,25 +950,37 @@
 
         <h3>Play an instrument in your DAW</h3>
         <ol>
-          <li>Create one MIDI port using the short guide for your device below.</li>
-          <li>In Glissando, tap <strong>output: synth</strong>, choose <strong>midi controller</strong>, then select that port.</li>
-          <li>In your DAW, choose the same port as the track input, arm the track, and load an MPE instrument.</li>
+          <li><strong>Connect MIDI</strong> and allow access. A known or single available output connects automatically.</li>
+          <li>In your DAW, choose that connection as the track input, arm the track, and load an MPE instrument.</li>
+          <li>Use <strong>test note</strong> in the output panel, then play and record in your DAW.</li>
         </ol>
+        <button class="popup-link" id="helpConnectBtn">connect MIDI</button>
 
         <details>
-          <summary>Mac</summary>
-          <p>Open <strong>Audio MIDI Setup</strong> → <strong>MIDI Studio</strong> → <strong>IAC Driver</strong>. Turn on <strong>Device is online</strong>. Use <strong>IAC Bus 1</strong> in Glissando and your DAW.</p>
+          <summary>No output? Mac</summary>
+          <p>Open the built-in <strong>Audio MIDI Setup</strong> → <strong>MIDI Studio</strong> → <strong>IAC Driver</strong>. Turn on <strong>Device is online</strong>. Use the same IAC bus in Glissando and your DAW. Nothing to install. <a href="https://support.apple.com/en-ie/guide/audio-midi-setup/ams1013/mac" target="_blank" rel="noopener">Apple guide</a></p>
         </details>
         <details>
-          <summary>Windows</summary>
-          <p>Install and open <a href="https://www.tobias-erichsen.de/software/loopmidi.html" target="_blank" rel="noopener">loopMIDI</a>. Create a port called <strong>Glissando</strong>, then choose it in Glissando and your DAW.</p>
+          <summary>No output? Windows</summary>
+          <p>Use a MIDI route already available on your system, or compatible USB-MIDI hardware routed to your DAW. The web cannot create a virtual MIDI port. If no route appears, local sound remains available; Glissando does not require a download.</p>
         </details>
         <details>
           <summary>Android tablet + laptop</summary>
-          <p>Connect the tablet by USB and choose <strong>MIDI</strong> as its USB mode. Select the tablet as the MIDI output in Glissando and as the track input in your DAW.</p>
+          <p>If your tablet offers USB <strong>MIDI</strong> mode, connect it with a data cable and select that mode. Allow MIDI in Glissando, then select the tablet input in your DAW. Availability depends on the tablet and browser; a USB cable alone does not guarantee a MIDI route.</p>
         </details>
-
-        <p><strong>Ableton:</strong> In Settings → Link, Tempo &amp; MIDI, enable Track and MPE for the port. Wavetable, Drift, Vital, and Surge XT are good instruments to try.</p>
+        <details>
+          <summary>Your DAW</summary>
+          <label for="dawGuideSelect">DAW</label>
+          <select id="dawGuideSelect" aria-controls="dawGuideText"></select>
+          <p id="dawGuideText"></p>
+          <p><a id="dawGuideLink" target="_blank" rel="noopener">Official guide</a></p>
+          <p>Setup guidance, not a verified compatibility list. MPE recording depends on your DAW version and instrument.</p>
+        </details>
+        <details>
+          <summary>Notes bend incorrectly or no sound?</summary>
+          <p>Match the receiving instrument to MPE lower zone: master channel 1, note channels 2-6, pitch bend +/-48 semitones, slide CC74. Lock fixes pitch to the scale; it still sends per-note pitch bend.</p>
+          <p>Check the selected input, track monitoring, instrument and volume. An open MIDI output does not confirm sound in the DAW. If this browser has no Web MIDI, you can still use local sound.</p>
+        </details>
       </div>
     </div>
   </div>
@@ -1299,7 +1339,7 @@ const Audio = (() => {
       masterGain.connect(actx.destination);
     },
     resume() {
-      if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
+      if (actx && (actx.state === 'suspended' || actx.state === 'interrupted')) actx.resume().catch(() => {});
     },
     Voice,
     get ready() { return actx !== null; }
@@ -1309,8 +1349,7 @@ const Audio = (() => {
 
 /* ============================================================================
    MIDIOUT — Web MIDI API directly in the browser. MPE Lower Zone.
-   No bridge, no WebSocket. Works on Android Chrome via USB-MIDI, on Mac via
-   IAC bus, on Windows laptops via loopMIDI.
+   No bridge or installation. Uses MIDI routes already exposed by the system.
 ============================================================================ */
 const MidiOut = (() => {
   const MEMBER_CHANNELS = [1, 2, 3, 4, 5];
@@ -1318,12 +1357,27 @@ const MidiOut = (() => {
   const Y_CC = 74;
   const SEND_INTERVAL_MS = 5;
 
-  let access = null;            // MIDIAccess
-  let currentOutput = null;     // chosen MIDIOutput
+  let access = null;
+  let currentOutput = null;
   let currentOutputId = null;
-  let supported = (typeof navigator !== 'undefined' && !!navigator.requestMIDIAccess);
-  let permissionState = 'unknown';   // 'granted' | 'denied' | 'unknown'
-  let listeners = new Set();
+  const supported = (typeof navigator !== 'undefined' && !!navigator.requestMIDIAccess);
+  let permissionState = 'unknown';
+  let phase = 'idle';
+  let requestPromise = null;
+  let accessVersion = 0;
+  let pendingOutput = null;
+  let selectionVersion = 0;
+  let permissionWatch = null;
+  let testTimer = null;
+  let testSent = false;
+  let savedId = null;
+  let savedPort = null;
+  try {
+    savedId = localStorage.getItem('glissando.midiDevice');
+    savedPort = JSON.parse(localStorage.getItem('glissando.midiPort') || 'null');
+  } catch (_) {}
+  const listeners = new Set();
+  const failedPorts = new Set();
   const channelState = new Map();
   const freeChannels = [...MEMBER_CHANNELS];
 
@@ -1336,68 +1390,189 @@ const MidiOut = (() => {
         outputs: outs,
         selectedId: currentOutputId,
         connected: !!currentOutput,
+        phase,
+        testing: testTimer !== null,
+        testSent,
       });
     }
   }
 
-  function listOutputs() {
-    if (!access) return [];
-    const out = [];
-    for (const o of access.outputs.values()) out.push({ id: o.id, name: o.name });
-    return out;
+  function availablePorts() {
+    return access ? [...access.outputs.values()].filter(o => o.state === 'connected') : [];
   }
-
-  async function requestAccess() {
-    if (!supported) { notifyStatus(); return; }
+  function listOutputs() {
+    return availablePorts().map(o => ({ id: o.id, name: o.name || 'MIDI output' }));
+  }
+  function rawSend(out, message, timestamp) {
+    try { out.send(message, timestamp); return true; } catch (_) { return false; }
+  }
+  function releaseNotes() {
+    if (testTimer !== null) clearTimeout(testTimer);
+    testTimer = null;
+    if (currentOutput) {
+      // Cancel the scheduled test note-off before sending immediate releases.
+      try { currentOutput.clear(); } catch (_) {}
+      for (const [ch, st] of channelState) {
+        rawSend(currentOutput, [0x80 | ch, st.baseNote, 64]);
+        rawSend(currentOutput, [0xE0 | ch, 0, 64]);
+      }
+    }
+    channelState.clear();
+    freeChannels.splice(0, freeChannels.length, ...MEMBER_CHANNELS);
+  }
+  function closePort(out) {
+    try { Promise.resolve(out.close()).catch(() => {}); } catch (_) {}
+  }
+  function dropOutput() {
+    releaseNotes();
+    const old = currentOutput;
+    currentOutput = null;
+    currentOutputId = null;
+    testSent = false;
+    if (old) closePort(old);
+  }
+  function autoCandidate(ports) {
+    const saved = ports.find(o => o.id === savedId);
+    if (saved) return saved;
+    const named = savedPort && ports.filter(o => o.name === savedPort.name && o.manufacturer === savedPort.manufacturer);
+    if (named && named.length === 1) return named[0];
+    const dedicated = ports.filter(o => /glissando/i.test(o.name || ''));
+    if (dedicated.length === 1) return dedicated[0];
+    // Do not mistake an OS synth for a DAW, or guess between multiple destinations.
+    const candidates = ports.filter(o => !/microsoft.*(?:gs|wavetable)|midi through/i.test(o.name || ''));
+    return !savedId && candidates.length === 1 ? candidates[0] : null;
+  }
+  function reconcile() {
+    const ports = availablePorts();
+    for (const id of failedPorts) if (!ports.some(o => o.id === id)) failedPorts.delete(id);
+    if (currentOutput && !ports.includes(currentOutput)) dropOutput();
+    if (pendingOutput || currentOutput) { notifyStatus(); return; }
+    const pick = autoCandidate(ports);
+    if (pick && !failedPorts.has(pick.id)) { void chooseOutput(pick.id); return; }
+    phase = !ports.length ? 'no-output' : pick && failedPorts.has(pick.id) ? 'port-error' : 'choose-output';
+    notifyStatus();
+  }
+  async function init() {
+    if (!supported) { phase = 'unsupported'; notifyStatus(); return; }
     try {
-      access = await navigator.requestMIDIAccess({ sysex: false });
-      permissionState = 'granted';
-      access.onstatechange = () => {
-        // device hot-plugged/removed — if our chosen device disappeared, drop it
-        if (currentOutputId) {
-          const still = [...access.outputs.values()].find(o => o.id === currentOutputId);
-          if (!still) { currentOutput = null; currentOutputId = null; }
-          else currentOutput = still;
-        }
+      permissionWatch = await navigator.permissions.query({ name: 'midi', sysex: false });
+      permissionState = permissionWatch.state;
+      permissionWatch.onchange = () => {
+        permissionState = permissionWatch.state;
+        if (permissionState === 'granted') { void requestAccess(); return; }
+        accessVersion++;
+        selectionVersion++;
+        pendingOutput = null;
+        if (access) access.onstatechange = null;
+        access = null;
+        dropOutput();
+        phase = 'idle';
         notifyStatus();
       };
-      // auto-pick: prefer a port named "Glissando", else first available
-      const list = [...access.outputs.values()];
-      const g = list.find(o => /glissando/i.test(o.name));
-      const pick = g || list[0];
-      if (pick) chooseOutput(pick.id);
-      notifyStatus();
-    } catch (e) {
-      permissionState = 'denied';
+      if (permissionState === 'granted') await requestAccess();
+      else notifyStatus();
+    } catch (_) {
+      // Unsupported permission queries must never trigger a surprise prompt.
       notifyStatus();
     }
   }
 
-  function chooseOutput(id) {
-    if (!access) return;
-    const out = [...access.outputs.values()].find(o => o.id === id);
-    currentOutput = out || null;
-    currentOutputId = out ? out.id : null;
-    if (currentOutput) sendBendRangeRPN();
+  function requestAccess() {
+    if (!supported) { phase = 'unsupported'; notifyStatus(); return Promise.resolve(); }
+    if (requestPromise) return requestPromise;
+    failedPorts.clear();
+    if (access) { reconcile(); return Promise.resolve(); }
+    phase = 'requesting';
+    const version = accessVersion;
+    const request = (async () => {
+      try {
+        const granted = await navigator.requestMIDIAccess({ sysex: false });
+        if (version !== accessVersion) return;
+        access = granted;
+        permissionState = 'granted';
+        access.onstatechange = reconcile;
+        reconcile();
+      } catch (e) {
+        if (version !== accessVersion) return;
+        if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
+          permissionState = 'denied';
+          phase = 'idle';
+        } else {
+          phase = 'access-error';
+        }
+        notifyStatus();
+      }
+    })().finally(() => { if (requestPromise === request) requestPromise = null; });
+    requestPromise = request;
     notifyStatus();
+    return requestPromise;
+  }
+
+  async function chooseOutput(id) {
+    const out = availablePorts().find(o => o.id === id);
+    if (!out || out === currentOutput || out === pendingOutput) return;
+    const version = ++selectionVersion;
+    pendingOutput = out;
+    dropOutput();
+    phase = 'opening';
+    notifyStatus();
+    let timer;
+    let expired = false;
+    try {
+      const opening = Promise.resolve(out.open());
+      opening.then(() => {
+        if ((expired || version !== selectionVersion) && currentOutput !== out && pendingOutput !== out) closePort(out);
+      }, () => {});
+      await Promise.race([
+        opening,
+        new Promise((_, reject) => { timer = setTimeout(() => { expired = true; reject(new Error('MIDI open timed out')); }, 3000); }),
+      ]);
+      if (version !== selectionVersion) return;
+      if (out.state !== 'connected') throw new Error('MIDI disconnected');
+      currentOutput = out;
+      currentOutputId = out.id;
+      if (!sendBendRangeRPN()) throw new Error('MIDI send failed');
+      savedId = out.id;
+      savedPort = { name: out.name, manufacturer: out.manufacturer };
+      try {
+        localStorage.setItem('glissando.midiDevice', savedId);
+        localStorage.setItem('glissando.midiPort', JSON.stringify(savedPort));
+      } catch (_) {}
+      failedPorts.delete(out.id);
+      phase = 'ready';
+    } catch (_) {
+      if (version !== selectionVersion) return;
+      failedPorts.add(out.id);
+      dropOutput();
+      closePort(out);
+      phase = 'port-error';
+    } finally {
+      clearTimeout(timer);
+      if (version === selectionVersion) { pendingOutput = null; notifyStatus(); }
+    }
   }
 
   function send(b1, b2, b3) {
-    if (!currentOutput) return;
+    if (!currentOutput) return false;
     const msg = (b3 === undefined) ? [b1, b2] : [b1, b2, b3];
-    try { currentOutput.send(msg); } catch(_) {}
+    if (rawSend(currentOutput, msg)) return true;
+    failedPorts.add(currentOutputId);
+    dropOutput();
+    phase = 'port-error';
+    notifyStatus();
+    return false;
   }
-  function noteOn(ch, note, vel)  { send(0x90 | ch, note & 0x7f, vel & 0x7f); }
+  function noteOn(ch, note, vel)  { return send(0x90 | ch, note & 0x7f, vel & 0x7f); }
   function noteOff(ch, note)      { send(0x80 | ch, note & 0x7f, 0x40); }
   function pitchBend14(ch, val14) { send(0xE0 | ch, val14 & 0x7f, (val14 >> 7) & 0x7f); }
   function cc(ch, num, val)       { send(0xB0 | ch, num & 0x7f, val & 0x7f); }
   function sendBendRangeRPN() {
     for (const ch of MEMBER_CHANNELS) {
-      cc(ch, 101, 0);  cc(ch, 100, 0);
-      cc(ch,   6, BEND_RANGE_SEMITONES);
-      cc(ch,  38, 0);
-      cc(ch, 101, 127); cc(ch, 100, 127);
+      for (const [controller, value] of [[101, 0], [100, 0], [6, BEND_RANGE_SEMITONES], [38, 0], [101, 127], [100, 127]]) {
+        if (!send(0xB0 | ch, controller, value)) return false;
+      }
     }
+    return true;
   }
   function bendForOffset(semitones) {
     let v = 8192 + (semitones / BEND_RANGE_SEMITONES) * 8192;
@@ -1423,8 +1598,8 @@ const MidiOut = (() => {
   }
 
   return {
-    init() { requestAccess(); },
-    requestAccess,                    // user-triggered retry
+    init,
+    requestAccess,
     chooseOutput,
     get connected() { return !!currentOutput; },
     get supported() { return supported; },
@@ -1433,13 +1608,21 @@ const MidiOut = (() => {
     get selectedId() { return currentOutputId; },
     onStatus(fn) { listeners.add(fn); },
     fingerDown(pid, pitchFloat, yNorm) {
+      if (!currentOutput) return null;
+      if (pid !== 'test-note' && testTimer !== null) {
+        clearTimeout(testTimer);
+        testTimer = null;
+        try { currentOutput.clear(); } catch (_) {}
+        this.fingerUp('test-note');
+        notifyStatus();
+      }
       const ch = takeChannel();
       if (ch === null) return null;
       const baseNote = Math.round(pitchFloat);
       const offset = pitchFloat - baseNote;
       pitchBend14(ch, bendForOffset(offset));
       cc(ch, Y_CC, Math.round(Math.max(0, Math.min(1, yNorm)) * 127));
-      noteOn(ch, baseNote, 100);
+      if (!noteOn(ch, baseNote, 100)) return null;
       channelState.set(ch, {
         pid, baseNote, lastBend: bendForOffset(offset),
         lastY: Math.round(yNorm * 127), lastSentAt: 0,
@@ -1472,15 +1655,25 @@ const MidiOut = (() => {
       pitchBend14(ch, 8192);
       returnChannel(ch);
     },
-    panic() {
-      for (const [ch, st] of channelState) {
-        noteOff(ch, st.baseNote);
-        pitchBend14(ch, 8192);
+    testNote() {
+      if (!currentOutput || channelState.size) return false;
+      const ch = this.fingerDown('test-note', 60, 0.5);
+      if (ch === null) return false;
+      // Queue the release in the MIDI driver too, so a throttled tab cannot hold it.
+      if (!rawSend(currentOutput, [0x80 | ch, 60, 64], performance.now() + 300)) {
+        this.fingerUp('test-note');
+        return false;
       }
-      channelState.clear();
-      freeChannels.length = 0;
-      for (const c of MEMBER_CHANNELS) freeChannels.push(c);
+      testSent = true;
+      testTimer = setTimeout(() => {
+        testTimer = null;
+        this.fingerUp('test-note');
+        notifyStatus();
+      }, 350);
+      notifyStatus();
+      return true;
     },
+    panic() { releaseNotes(); notifyStatus(); },
   };
 })();
 
@@ -1970,7 +2163,7 @@ const Hud = (() => {
     panel.classList.remove('open');
   });
 
-  Dropdown.make('modeDd', {
+  const modeDd = Dropdown.make('modeDd', {
     value: State.mode,
     options: [
       { value: 'local', label: 'browser synth' },
@@ -1978,8 +2171,8 @@ const Hud = (() => {
       { value: 'both',  label: 'both (synth + midi)' },
     ],
     onChange: v => {
-      State.setMode(v);
-      updateModeBtn();
+      OutputRouting.choose(v);
+      if (v !== 'local') void MidiOut.requestAccess();
       Analytics.track('change_output_mode', { mode: v });
       if (v === 'midi' || v === 'both') Analytics.markUsedMidiMode();
     },
@@ -1988,19 +2181,20 @@ const Hud = (() => {
   // device picker — rebuilt on every status update
   let midiDeviceDd = null;
   function buildDeviceDd(outputs, selectedId) {
-    const opts = outputs.length
-      ? outputs.map(o => ({ value: o.id, label: o.name }))
-      : [{ value: '', label: 'no devices found', disabled: true }];
+    const opts = [
+      { value: '', label: outputs.length ? 'choose an output' : 'no MIDI output', disabled: true },
+      ...outputs.map(o => ({ value: o.id, label: o.name })),
+    ];
     if (midiDeviceDd) {
       midiDeviceDd.setOptions(opts);
-      midiDeviceDd.setValue(selectedId || (opts[0] && opts[0].value) || '');
+      midiDeviceDd.setValue(selectedId || '');
     } else {
       midiDeviceDd = Dropdown.make('midiDeviceDd', {
         value: selectedId || '',
         options: opts,
         onChange: id => {
-          MidiOut.chooseOutput(id);
-          try { localStorage.setItem('glissando.midiDevice', id); } catch(_){}
+          OutputRouting.choose('midi');
+          void MidiOut.chooseOutput(id);
           const sel = MidiOut.outputs.find(o => o.id === id);
           Analytics.track('select_midi_device', { device_name: sel ? sel.name : 'unknown' });
         },
@@ -2009,7 +2203,12 @@ const Hud = (() => {
   }
   buildDeviceDd([], '');
 
-  document.getElementById('midiRetry').addEventListener('click', () => MidiOut.requestAccess());
+  document.getElementById('midiRetry').addEventListener('click', () => {
+    OutputRouting.choose('midi');
+    void MidiOut.requestAccess();
+  });
+  document.getElementById('midiTest').addEventListener('click', () => MidiOut.testNote());
+  document.getElementById('midiGuide').addEventListener('click', () => Popup.show('help'));
 
   const midiDot = document.getElementById('midiDot');
   const midiStatus = document.getElementById('midiStatus');
@@ -2019,17 +2218,38 @@ const Hud = (() => {
   MidiOut.onStatus((s) => {
     midiDot.classList.toggle('connected', !!s.connected);
     if (!s.supported) {
-      midiStatus.textContent = 'web midi not supported in this browser';
-    } else if (s.permission !== 'granted') {
-      midiStatus.textContent = 'tap enable midi';
-    } else if (s.outputs.length === 0) {
-      midiStatus.textContent = 'no midi devices found';
+      midiStatus.textContent = 'MIDI unavailable in this browser';
+    } else if (s.phase === 'requesting') {
+      midiStatus.textContent = 'waiting for MIDI permission';
+    } else if (s.permission === 'denied') {
+      midiStatus.textContent = 'MIDI permission blocked';
+    } else if (s.phase === 'access-error') {
+      midiStatus.textContent = 'MIDI could not start';
+    } else if (s.phase === 'opening') {
+      midiStatus.textContent = 'opening MIDI output';
+    } else if (s.phase === 'port-error') {
+      midiStatus.textContent = 'MIDI output unavailable - retry or choose another';
     } else if (s.connected) {
       const sel = s.outputs.find(o => o.id === s.selectedId);
-      midiStatus.textContent = 'connected · ' + (sel ? sel.name : 'unknown');
+      midiStatus.textContent = 'MIDI ready · ' + (sel ? sel.name : 'output');
+    } else if (s.permission !== 'granted') {
+      midiStatus.textContent = 'local sound ready';
+    } else if (s.outputs.length === 0) {
+      midiStatus.textContent = 'no MIDI output - local sound ready';
     } else {
-      midiStatus.textContent = 'pick a device';
+      midiStatus.textContent = 'choose a MIDI output';
     }
+    const retry = document.getElementById('midiRetry');
+    retry.disabled = !s.supported || s.phase === 'requesting' || s.phase === 'opening';
+    retry.textContent = s.permission === 'granted' ? 'rescan' : 'connect MIDI';
+    document.getElementById('midiTest').disabled = !s.connected || s.testing;
+    document.getElementById('midiHelp').textContent = s.testSent
+      ? 'Test note sent. No sound? Check the track input, monitoring and instrument in your DAW.'
+      : s.connected
+        ? 'Output open. DAW reception is not confirmed. Test the note on an armed instrument track.'
+        : s.permission === 'denied'
+          ? 'Allow MIDI in your browser site settings to connect. Local sound is still available.'
+          : 'No installation. MIDI needs an output exposed by your device or operating system.';
     buildDeviceDd(s.outputs, s.selectedId);
     updateModeBtn();
 
@@ -2059,6 +2279,9 @@ const Hud = (() => {
     }
     modeBtn.textContent = txt;
   }
+  State.on(evt => {
+    if (evt === 'mode') { modeDd.setValue(State.mode); updateModeBtn(); }
+  });
   updateModeBtn();
   return {};
 })();
@@ -2102,6 +2325,7 @@ const Controller = (() => {
   function onDown(e) {
     if (e.target.closest('#bar') || e.target.closest('#botBar') || e.target.closest('#midiPanel')) return;
     e.preventDefault();
+    startGlissando();
     const x = e.clientX, y = e.clientY;
     const W = TouchView.W || window.innerWidth;
     const H = TouchView.H || window.innerHeight;
@@ -2152,6 +2376,7 @@ const Controller = (() => {
     releaseNearLineOwnersForFinger(e.pointerId);
     const idx = arrivalOrder.indexOf(e.pointerId);
     if (idx !== -1) arrivalOrder.splice(idx, 1);
+    OutputRouting.refresh();
   }
 
   function releaseNearLineOwnersForFinger(pointerId) {
@@ -2317,8 +2542,10 @@ const Controller = (() => {
   }
 
   return {
+    get isPlaying() { return fingers.size > 0 || heldVoices.length > 0; },
     start() {
       Audio.start();
+      Audio.resume();
       GridView.build();
       requestAnimationFrame(loop);
     },
@@ -2329,10 +2556,11 @@ const Controller = (() => {
       arrivalOrder.length = 0;
       while (heldVoices.length) heldVoices.pop().release();
       GridView.clearAllHints();
-      if (State.usesMidiOut) MidiOut.panic();
+      MidiOut.panic();
     },
     releaseHeld() {
       while (heldVoices.length) heldVoices.pop().release();
+      OutputRouting.refresh();
     },
   };
 })();
@@ -2431,6 +2659,30 @@ const Analytics = (() => {
 })();
 
 
+/* Keep automatic route changes between phrases, never in the middle of a note. */
+const OutputRouting = (() => {
+  let preferredMode = 'midi';
+  try {
+    const saved = localStorage.getItem('glissando.outputMode');
+    if (['local', 'midi', 'both'].includes(saved)) preferredMode = saved;
+  } catch (_) {}
+  function refresh() {
+    if (Controller.isPlaying) return;
+    const mode = MidiOut.connected ? preferredMode : 'local';
+    if (State.mode !== mode) State.setMode(mode);
+  }
+  MidiOut.onStatus(refresh);
+  return {
+    refresh,
+    choose(mode) {
+      Controller.panic();
+      preferredMode = mode;
+      try { localStorage.setItem('glissando.outputMode', mode); } catch (_) {}
+      refresh();
+    },
+  };
+})();
+
 /* ============================================================================
    POPUP + UI EXTRAS
 ============================================================================ */
@@ -2438,17 +2690,34 @@ const Popup = (() => {
   const backdrop = document.getElementById('popupBackdrop');
   const closeBtn = document.getElementById('popupClose');
   const views = backdrop.querySelectorAll('.popup-view');
+  let returnFocus = null;
   function show(viewName) {
+    if (!backdrop.classList.contains('visible')) returnFocus = document.activeElement;
     views.forEach(v => v.classList.toggle('hidden', v.dataset.view !== viewName));
+    backdrop.inert = false;
+    backdrop.setAttribute('aria-hidden', 'false');
     backdrop.classList.add('visible');
+    closeBtn.focus();
   }
   function hide() {
+    const wasVisible = backdrop.classList.contains('visible');
+    if (wasVisible && returnFocus) returnFocus.focus();
     backdrop.classList.remove('visible');
+    backdrop.inert = true;
+    backdrop.setAttribute('aria-hidden', 'true');
   }
-  closeBtn.addEventListener('click', hide);
+  closeBtn.addEventListener('click', startGlissando);
   // Click backdrop (outside the popup card) to close
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) hide();
+    if (e.target === backdrop) startGlissando();
+  });
+  backdrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); startGlissando(); }
+    if (e.key !== 'Tab') return;
+    const items = [...backdrop.querySelectorAll('button, a, select, summary')].filter(el => el.getClientRects().length && !el.disabled);
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
   // View switch buttons
   backdrop.querySelectorAll('[data-goto]').forEach(btn => {
@@ -2467,10 +2736,8 @@ function startGlissando() {
   }
   Analytics.track('session_start');
 
-  // Audio and MIDI must start during the tap itself. Awaiting anything first
-  // can consume the browser's user activation and leave the instrument silent.
+  // Start audio during the gesture; MIDI permission never blocks playing.
   Controller.start();
-  MidiOut.init();
   appStarted = true;
 
   try { screen.orientation.lock('landscape').catch(() => {}); } catch(_){}
@@ -2479,6 +2746,44 @@ function startGlissando() {
 ['popupStartBtn', 'popupHelpPlayBtn'].forEach(id => {
   document.getElementById(id).addEventListener('click', startGlissando);
 });
+document.getElementById('helpConnectBtn').addEventListener('click', () => {
+  Popup.hide();
+  document.getElementById('midiPanel').classList.add('open');
+  OutputRouting.choose('midi');
+  void MidiOut.requestAccess();
+});
+
+const DawGuides = (() => {
+  const guides = [
+    ['Ableton Live', 'Enable Track and MPE for the input in MIDI Settings. Select that input on a MIDI track, load an MPE instrument and arm the track.', 'https://help.ableton.com/hc/en-us/articles/360019144999-MPE-in-Live-FAQ'],
+    ['Logic Pro', 'Select a software instrument track. For compatible Logic instruments, enable MIDI Mono mode and match the pitch bend range. Check the instrument settings in the guide.', 'https://support.apple.com/en-mide/guide/logicpro/lgcp8f599497/mac'],
+    ['Cubase', 'Configure the input as an MPE device in the Note Expression input settings. Choose that input on an instrument track and enable recording and monitoring.', 'https://www.steinberg.help/r/cubase-pro/15.0/en/cubase_nuendo/topics/note_expression/note_expression_mpe_c.html'],
+    ['Bitwig Studio', 'Add the MIDI input under Settings > Controllers. Use an MPE-capable controller configuration and instrument, then arm its track. Check the plug-in MPE settings too.', 'https://www.bitwig.com/userguide/latest/midi_controllers/'],
+    ['REAPER', 'Enable the input in MIDI device preferences. On an armed track, select that MIDI input with all channels and turn monitoring on. Use an MPE instrument without merging the note channels.', 'https://dlx.reaper.fm/userguide/html/'],
+    ['Studio One', 'Add the input as a keyboard in External Devices, with Receive From set to your MIDI route. Select it on an instrument track. Enable MPE where supported by the device and instrument settings.', 'https://support.presonus.com/hc/en-us/articles/210040463-MIDI-External-Devices-Control-Surfaces-Setup'],
+    ['FL Studio', 'Enable the input in MIDI Settings and select your instrument. Check your version and plug-in for per-note expression recording; MIDI input alone does not establish full MPE support.', 'https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/envsettings_midi.htm'],
+    ['Pro Tools', 'Enable the route under Setup > MIDI > Input Devices. Select an instrument track with a loaded instrument and enable monitoring or record. Verify per-note expression separately for your version and instrument.', 'https://kb.avid.com/pkb/articles/en_US/Troubleshooting/Pro-Tools-not-receiving-MIDI-signals-from-my-keyboard-connected-via-USB-or-MIDI'],
+    ['Reason', 'Select the route under Preferences > Control Surfaces / Easy MIDI Inputs, then select an instrument track. Basic MIDI input does not guarantee per-note MPE recording; check your version and instrument.', 'https://docs.reasonstudios.com/install/setting-up'],
+    ['GarageBand', 'Make the MIDI route available in macOS, then select a software instrument track. Check expression support for that instrument; do not assume independent bends will be recorded.', 'https://support.apple.com/en-sg/guide/garageband/welcome/mac'],
+  ];
+  const select = document.getElementById('dawGuideSelect');
+  for (const [name] of guides) select.add(new Option(name, name));
+  try {
+    const saved = localStorage.getItem('glissando.dawGuide');
+    if (guides.some(g => g[0] === saved)) select.value = saved;
+  } catch (_) {}
+  function render() {
+    const guide = guides.find(g => g[0] === select.value) || guides[0];
+    document.getElementById('dawGuideText').textContent = guide[1];
+    document.getElementById('dawGuideLink').href = guide[2];
+  }
+  select.addEventListener('change', () => {
+    try { localStorage.setItem('glissando.dawGuide', select.value); } catch (_) {}
+    render();
+  });
+  render();
+  return { count: guides.length };
+})();
 
 // Help button (top bar) — open popup in help view
 document.getElementById('helpBtn').addEventListener('click', () => {
@@ -2537,19 +2842,11 @@ document.addEventListener('click', (e) => {
    BOOT
 ============================================================================ */
 GridView.build();
-
-// Restore last-used MIDI device after the user grants permission.
-let _restoreId = null;
-try { _restoreId = localStorage.getItem('glissando.midiDevice'); } catch(_){}
-if (_restoreId) {
-  MidiOut.onStatus(function once(s) {
-    if (s.permission === 'granted' && s.outputs.length) {
-      const exists = s.outputs.find(o => o.id === _restoreId);
-      if (exists) MidiOut.chooseOutput(_restoreId);
-      _restoreId = null;
-    }
-  });
-}
+void MidiOut.init();
+window.addEventListener('pagehide', () => Controller.panic());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) Controller.panic();
+});
 </script>
 </body>
 </html>
