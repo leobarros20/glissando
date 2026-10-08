@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "prepare:pwa": "node scripts/prepare-pwa.cjs",
+    "test:browser": "node scripts/browser-check.cjs",
+    "test:pwa": "node scripts/pwa-check.cjs"
   }
 }

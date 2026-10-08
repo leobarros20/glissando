@@ -1,17 +1,13 @@
 const assert = require('node:assert/strict');
-const { readFileSync, mkdirSync } = require('node:fs');
+const { mkdirSync } = require('node:fs');
 const { join, resolve } = require('node:path');
-const http = require('node:http');
+const { createServer } = require('./static-server.cjs');
 const { chromium } = require('playwright');
 
 const root = resolve(__dirname, '..');
 const out = process.env.GLISSANDO_QA_DIR || resolve(root, '..', '..', 'qa-web-only');
 mkdirSync(out, { recursive: true });
-const server = http.createServer((req, res) => {
-  const file = req.url.split('?')[0] === '/glissando-text-editor.html' ? 'glissando-text-editor.html' : 'index.html';
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end(readFileSync(join(root, file)));
-});
+const server = createServer({ root });
 
 async function prepare(context, permission = 'prompt', ports = []) {
   await context.route(/google|clarity\.ms/, route => route.abort());

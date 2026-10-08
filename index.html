@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glissando</title>
+<meta name="theme-color" content="#0a0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Glissando">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0d12'/%3E%3Cpath d='M12 42 C24 10 40 54 52 22' fill='none' stroke='%235ec8ff' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -737,6 +743,14 @@
     padding: 8px; font: inherit; letter-spacing: 0;
   }
   #dawGuideText { white-space: normal; }
+  #dawGuideStatus { color: #cbd9e5; font-weight: 600; }
+  #appActions { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+  #appActions button { min-height: 40px; margin: 0; letter-spacing: 0; }
+  [hidden] { display: none !important; }
+  #appStatus { margin-top: 12px; }
+  #appUpdateNotice { color: #8ed8b6; }
+  #helpBtn.update-ready { border-color: #8ed8b6; color: #8ed8b6; }
+  .app-updating #stage { pointer-events: none; }
 
   /* ============ ICON BUTTONS (help, info) ============ */
   .icon-btn {
@@ -920,7 +934,7 @@
     <button class="pill" id="midiGuide">connection help</button>
   </div>
   <div class="help" id="midiHelp">
-    No installation. MIDI needs an output exposed by your device or operating system.
+    Android + USB: choose MIDI in the phone's USB options, then connect here.
   </div>
 </div>
 
@@ -948,39 +962,54 @@
         <p>The browser synth needs no setup.</p>
         <button class="popup-cta" id="popupHelpPlayBtn">play now</button>
 
-        <h3>Play an instrument in your DAW</h3>
+        <h3>Phone or tablet + USB + DAW</h3>
+        <p id="deviceSupport">Use Chrome on Android with USB MIDI support.</p>
         <ol>
-          <li><strong>Connect MIDI</strong> and allow access. A known or single available output connects automatically.</li>
-          <li>In your DAW, choose that connection as the track input, arm the track, and load an MPE instrument.</li>
-          <li>Use <strong>test note</strong> in the output panel, then play and record in your DAW.</li>
+          <li>Connect a <strong>USB data cable</strong> to your computer. On Android, choose <strong>MIDI</strong> in the USB options.</li>
+          <li><strong>Connect MIDI</strong> here and allow access.</li>
+          <li>In your DAW, select the phone's MIDI input, load an MPE instrument and <strong>arm the track</strong>. Send a <strong>test note</strong>, then play.</li>
         </ol>
         <button class="popup-link" id="helpConnectBtn">connect MIDI</button>
 
         <details>
-          <summary>No output? Mac</summary>
-          <p>Open the built-in <strong>Audio MIDI Setup</strong> → <strong>MIDI Studio</strong> → <strong>IAC Driver</strong>. Turn on <strong>Device is online</strong>. Use the same IAC bus in Glissando and your DAW. Nothing to install. <a href="https://support.apple.com/en-ie/guide/audio-midi-setup/ams1013/mac" target="_blank" rel="noopener">Apple guide</a></p>
+          <summary>No USB MIDI output?</summary>
+          <p>Check that the cable carries data, not just power, and that your phone offers USB MIDI mode. A known or single output connects automatically; otherwise choose the USB output. If the computer recognizes your phone as MIDI, no virtual MIDI bridge is needed. <a href="https://source.android.com/docs/core/audio/midi" target="_blank" rel="noopener">Android guide</a></p>
         </details>
         <details>
-          <summary>No output? Windows</summary>
-          <p>Use a MIDI route already available on your system, or compatible USB-MIDI hardware routed to your DAW. The web cannot create a virtual MIDI port. If no route appears, local sound remains available; Glissando does not require a download.</p>
+          <summary>iPhone or iPad?</summary>
+          <p>Safari on iPhone and iPad does not support Web MIDI. This USB-to-DAW route is unavailable there, even from the home screen. You can still play the browser sound. <a href="https://developer.mozilla.org/en-US/docs/Web/API/Navigator/requestMIDIAccess#browser_compatibility" target="_blank" rel="noopener">Browser compatibility</a></p>
         </details>
         <details>
-          <summary>Android tablet + laptop</summary>
-          <p>If your tablet offers USB <strong>MIDI</strong> mode, connect it with a data cable and select that mode. Allow MIDI in Glissando, then select the tablet input in your DAW. Availability depends on the tablet and browser; a USB cable alone does not guarantee a MIDI route.</p>
+          <summary>Playing on the computer itself?</summary>
+          <p><strong>Mac:</strong> enable the built-in IAC Driver in Audio MIDI Setup, then select the same bus here and in your DAW. <a href="https://support.apple.com/en-ie/guide/audio-midi-setup/ams1013/mac" target="_blank" rel="noopener">Apple guide</a></p>
+          <p><strong>Windows:</strong> use a MIDI route already exposed by the system or compatible hardware. A web page cannot create a virtual MIDI port. This is separate from connecting an Android phone by USB.</p>
         </details>
         <details>
           <summary>Your DAW</summary>
           <label for="dawGuideSelect">DAW</label>
           <select id="dawGuideSelect" aria-controls="dawGuideText"></select>
+          <p id="dawGuideStatus" role="status"></p>
           <p id="dawGuideText"></p>
           <p><a id="dawGuideLink" target="_blank" rel="noopener">Official guide</a></p>
-          <p>Setup guidance, not a verified compatibility list. MPE recording depends on your DAW version and instrument.</p>
+          <p>Documentation reviewed October 2026, not a verified compatibility list. Physical USB recording tests with Glissando are still pending.</p>
         </details>
         <details>
           <summary>Notes bend incorrectly or no sound?</summary>
           <p>Match the receiving instrument to MPE lower zone: master channel 1, note channels 2-6, pitch bend +/-48 semitones, slide CC74. Lock fixes pitch to the scale; it still sends per-note pitch bend.</p>
           <p>Check the selected input, track monitoring, instrument and volume. An open MIDI output does not confirm sound in the DAW. If this browser has no Web MIDI, you can still use local sound.</p>
         </details>
+        <details id="appDetails">
+          <summary>Glissando app</summary>
+          <p id="appInstallHint">Optional: use your browser menu to add Glissando to your home screen. You can keep using this URL without installing anything.</p>
+          <div id="appActions">
+            <button class="popup-link" id="appInstall" hidden>add to home screen</button>
+            <button class="popup-link" id="appUpdate" hidden>update and reopen</button>
+          </div>
+          <p id="appStatus" role="status">Web version</p>
+          <p id="appUpdateStatus" role="status"></p>
+          <p>Home-screen access does not change MIDI compatibility.</p>
+        </details>
+        <p id="appUpdateNotice" hidden>Update available in Glissando app.</p>
       </div>
     </div>
   </div>
@@ -1602,6 +1631,7 @@ const MidiOut = (() => {
     requestAccess,
     chooseOutput,
     get connected() { return !!currentOutput; },
+    get isPlaying() { return channelState.size > 0; },
     get supported() { return supported; },
     get permission() { return permissionState; },
     get outputs() { return listOutputs(); },
@@ -2249,7 +2279,9 @@ const Hud = (() => {
         ? 'Output open. DAW reception is not confirmed. Test the note on an armed instrument track.'
         : s.permission === 'denied'
           ? 'Allow MIDI in your browser site settings to connect. Local sound is still available.'
-          : 'No installation. MIDI needs an output exposed by your device or operating system.';
+          : !s.supported
+            ? 'This browser has no Web MIDI. Local sound works; USB MIDI needs a supported device and browser.'
+            : 'Phone or tablet: use Chrome on Android, a USB data cable and USB MIDI mode. Then connect MIDI.';
     buildDeviceDd(s.outputs, s.selectedId);
     updateModeBtn();
 
@@ -2323,6 +2355,7 @@ const Controller = (() => {
   }
 
   function onDown(e) {
+    if (document.documentElement.classList.contains('app-updating')) return;
     if (e.target.closest('#bar') || e.target.closest('#botBar') || e.target.closest('#midiPanel')) return;
     e.preventDefault();
     startGlissando();
@@ -2760,12 +2793,24 @@ const DawGuides = (() => {
     ['Cubase', 'Configure the input as an MPE device in the Note Expression input settings. Choose that input on an instrument track and enable recording and monitoring.', 'https://www.steinberg.help/r/cubase-pro/15.0/en/cubase_nuendo/topics/note_expression/note_expression_mpe_c.html'],
     ['Bitwig Studio', 'Add the MIDI input under Settings > Controllers. Use an MPE-capable controller configuration and instrument, then arm its track. Check the plug-in MPE settings too.', 'https://www.bitwig.com/userguide/latest/midi_controllers/'],
     ['REAPER', 'Enable the input in MIDI device preferences. On an armed track, select that MIDI input with all channels and turn monitoring on. Use an MPE instrument without merging the note channels.', 'https://dlx.reaper.fm/userguide/html/'],
-    ['Studio One', 'Add the input as a keyboard in External Devices, with Receive From set to your MIDI route. Select it on an instrument track. Enable MPE where supported by the device and instrument settings.', 'https://support.presonus.com/hc/en-us/articles/210040463-MIDI-External-Devices-Control-Surfaces-Setup'],
-    ['FL Studio', 'Enable the input in MIDI Settings and select your instrument. Check your version and plug-in for per-note expression recording; MIDI input alone does not establish full MPE support.', 'https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/envsettings_midi.htm'],
-    ['Pro Tools', 'Enable the route under Setup > MIDI > Input Devices. Select an instrument track with a loaded instrument and enable monitoring or record. Verify per-note expression separately for your version and instrument.', 'https://kb.avid.com/pkb/articles/en_US/Troubleshooting/Pro-Tools-not-receiving-MIDI-signals-from-my-keyboard-connected-via-USB-or-MIDI'],
-    ['Reason', 'Select the route under Preferences > Control Surfaces / Easy MIDI Inputs, then select an instrument track. Basic MIDI input does not guarantee per-note MPE recording; check your version and instrument.', 'https://docs.reasonstudios.com/install/setting-up'],
-    ['GarageBand', 'Make the MIDI route available in macOS, then select a software instrument track. Check expression support for that instrument; do not assume independent bends will be recorded.', 'https://support.apple.com/en-sg/guide/garageband/welcome/mac'],
+    ['Studio One', 'Use version 5.3 or later with an MPE plug-in. Add the input as a keyboard in External Devices, select it on an instrument track and arm the track.', 'https://support.roli.com/en/support/solutions/articles/36000024665-studio-one-using-the-seaboard-rise-grand-with-studio-one'],
+    ['FL Studio', 'MIDI Channel Through can pass expression to compatible plug-ins for live playing. ROLI documents recording limitations; verify your version before relying on MPE recording.', 'https://rolisupport.freshdesk.com/en/support/solutions/articles/36000019138-fl-studio-using-the-seaboard-rise-grand-with-fl-studio-fruity-loops-'],
+    ['Pro Tools', 'Avid announced MPE in 2026, but delivery was not confirmed in the release notes reviewed. Older setups need separate MIDI tracks per note channel. Check your exact version before recording.', 'https://kb.avid.com/pkb/articles/en_US/Knowledge/Pro-Tools-2026-4-Release-Notes'],
+    ['Reason', 'Not recommended for this MPE workflow. The Reason 14 manual limits each VST to one MIDI channel, so independent per-note expression cannot be assumed. Lock does not convert Glissando to single-channel MIDI.', 'https://docs.reasonstudios.com/reason14/working-with-vst-plugins'],
+    ['GarageBand', 'On Mac, select a software instrument track with an MPE-capable instrument. Some built-in sounds do not respond to all dimensions, especially slide (CC74). Test recording and playback.', 'https://rolisupport.freshdesk.com/en/support/solutions/articles/36000037232-using-the-seaboard-rise-grand-with-garageband'],
   ];
+  const compatibility = {
+    'Ableton Live': 'MPE documented: Live 11 or later',
+    'Logic Pro': 'MPE documented: compatible instruments on Mac',
+    'Cubase': 'MPE documented: check your version',
+    'Bitwig Studio': 'MPE documented: compatible instruments',
+    'REAPER': 'MPE documented: preserve all note channels',
+    'Studio One': 'MPE documented: version 5.3 or later',
+    'FL Studio': 'Limited: live playing and recording differ',
+    'Pro Tools': 'Unconfirmed: depends on the release',
+    'Reason': 'Not recommended for per-note MPE',
+    'GarageBand': 'Conditional: Mac, instrument-dependent',
+  };
   const select = document.getElementById('dawGuideSelect');
   for (const [name] of guides) select.add(new Option(name, name));
   try {
@@ -2775,6 +2820,7 @@ const DawGuides = (() => {
   function render() {
     const guide = guides.find(g => g[0] === select.value) || guides[0];
     document.getElementById('dawGuideText').textContent = guide[1];
+    document.getElementById('dawGuideStatus').textContent = compatibility[guide[0]];
     document.getElementById('dawGuideLink').href = guide[2];
   }
   select.addEventListener('change', () => {
@@ -2843,10 +2889,145 @@ document.addEventListener('click', (e) => {
 ============================================================================ */
 GridView.build();
 void MidiOut.init();
+if (!MidiOut.supported) {
+  document.getElementById('deviceSupport').textContent = 'This browser cannot send MIDI. For USB-to-DAW, use Chrome on an Android device with USB MIDI mode. Local sound is available here.';
+  document.getElementById('helpConnectBtn').disabled = true;
+}
 window.addEventListener('pagehide', () => Controller.panic());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) Controller.panic();
 });
+
+/* Optional app shell. The instrument and HTML text editor remain self-contained. */
+const AppShell = (() => {
+  const installButton = document.getElementById('appInstall');
+  const updateButton = document.getElementById('appUpdate');
+  const status = document.getElementById('appStatus');
+  const updateStatus = document.getElementById('appUpdateStatus');
+  const standalone = matchMedia('(display-mode: standalone)');
+  let installPrompt = null;
+  let registration = null;
+  let ready = false;
+  let updating = false;
+  let updateTimer = null;
+  let lastCheck = 0;
+
+  function render() {
+    const installed = standalone.matches || navigator.standalone === true;
+    installButton.hidden = installed || !installPrompt;
+    document.getElementById('appInstallHint').hidden = installed;
+    status.textContent = ready
+      ? (navigator.onLine ? 'Available offline' : 'Offline - ready to play')
+      : 'Web version - offline copy not ready';
+    const waiting = !!registration?.waiting;
+    updateButton.hidden = !waiting;
+    updateButton.disabled = updating;
+    document.getElementById('appUpdateNotice').hidden = !waiting;
+    document.getElementById('helpBtn').classList.toggle('update-ready', waiting);
+  }
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installPrompt = event;
+    render();
+  });
+  window.addEventListener('appinstalled', () => { installPrompt = null; render(); });
+  standalone.addEventListener('change', render);
+  window.addEventListener('online', render);
+  window.addEventListener('offline', render);
+  installButton.addEventListener('click', async () => {
+    const prompt = installPrompt;
+    if (!prompt) return;
+    installPrompt = null;
+    render();
+    try { await prompt.prompt(); } catch (_) {}
+  });
+
+  function unlock(message) {
+    clearTimeout(updateTimer);
+    updating = false;
+    document.documentElement.classList.remove('app-updating');
+    document.getElementById('stage').inert = false;
+    updateStatus.textContent = message;
+    render();
+  }
+  updateButton.addEventListener('click', () => {
+    if (updating || !registration?.waiting) return;
+    if (document.hidden || Controller.isPlaying || MidiOut.isPlaying) {
+      updateStatus.textContent = 'Release all notes, including held notes, before updating.';
+      return;
+    }
+    updating = true;
+    document.documentElement.classList.add('app-updating');
+    document.getElementById('stage').inert = true;
+    updateStatus.textContent = 'Reopening the updated app...';
+    render();
+    const channel = new MessageChannel();
+    channel.port1.onmessage = ({ data }) => {
+      channel.port1.close();
+      if (data === 'other-tabs') unlock('Close other Glissando tabs or windows, then update here.');
+      if (data === 'expired') unlock('Update timed out. Please try again.');
+    };
+    updateTimer = setTimeout(() => {
+      channel.port1.close();
+      unlock('Update could not finish. You can keep playing and try again.');
+    }, 5000);
+    try {
+      registration.waiting.postMessage({ type: 'ACTIVATE_WHEN_SOLO', expires: Date.now() + 3000 }, [channel.port2]);
+    } catch (_) {
+      channel.port1.close();
+      unlock('Update could not finish. You can keep playing and try again.');
+    }
+  });
+
+  async function checkForUpdate() {
+    if (!registration || document.hidden || !navigator.onLine || Date.now() - lastCheck < 60000) return;
+    lastCheck = Date.now();
+    try { await registration.update(); } catch (_) {}
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkForUpdate(); });
+  document.getElementById('helpBtn').addEventListener('click', () => void checkForUpdate());
+
+  // Do not register from downloaded copies, editor previews, or other HTML files.
+  const isAppPath = location.pathname.endsWith('/') || location.pathname.endsWith('/index.html');
+  if ('serviceWorker' in navigator && window.isSecureContext && window.top === window && isAppPath && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (updating && !Controller.isPlaying && !MidiOut.isPlaying) {
+        clearTimeout(updateTimer);
+        location.reload();
+      }
+    });
+    async function prepareOfflineApp() {
+      const scope = new URL('./', location.href).href;
+      const existing = await navigator.serviceWorker.getRegistration(scope);
+      const reg = existing?.scope === scope ? existing :
+        await navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' });
+      registration = reg;
+      reg.addEventListener('updatefound', () => {
+        const worker = reg.installing;
+        if (worker) worker.addEventListener('statechange', render);
+      });
+      render();
+      void checkForUpdate();
+      await navigator.serviceWorker.ready;
+      // Ask the installed worker about its own cache, without needing the network.
+      ready = await new Promise(resolve => {
+        const channel = new MessageChannel();
+        const timer = setTimeout(() => { channel.port1.close(); resolve(false); }, 3000);
+        channel.port1.onmessage = ({ data }) => {
+          clearTimeout(timer);
+          channel.port1.close();
+          resolve(data === true);
+        };
+        reg.active.postMessage({ type: 'OFFLINE_STATUS' }, [channel.port2]);
+      });
+      render();
+    }
+    void prepareOfflineApp().catch(() => { ready = false; render(); });
+  }
+  render();
+  return {};
+})();
 </script>
 </body>
 </html>

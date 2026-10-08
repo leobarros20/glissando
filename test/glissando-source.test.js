@@ -49,15 +49,24 @@ test('near-line visual ownership is stable when close fingers compete', () => {
 test('connection help is web-only and keeps platform details optional', () => {
   assert.match(html, /connect to a DAW/);
   assert.match(html, /Just want to play\?/);
-  assert.match(html, /Play an instrument in your DAW/);
+  assert.match(html, /Phone or tablet \+ USB \+ DAW/);
   assert.match(html, /<ol>[\s\S]*Connect MIDI[\s\S]*arm the track[\s\S]*test note[\s\S]*<\/ol>/);
-  assert.match(html, /<summary>No output\? Mac<\/summary>/);
-  assert.match(html, /<summary>No output\? Windows<\/summary>/);
-  assert.match(html, /<summary>Android tablet \+ laptop<\/summary>/);
+  assert.match(html, /<summary>No USB MIDI output\?<\/summary>/);
+  assert.match(html, /<summary>iPhone or iPad\?<\/summary>/);
+  assert.match(html, /<summary>Playing on the computer itself\?<\/summary>/);
   assert.doesNotMatch(html, /<h3>Controls<\/h3>/);
   assert.doesNotMatch(html, /loopMIDI|Install and open|new WebSocket/);
   assert.match(html, /id="dawGuideSelect"/);
   assert.match(html, /not a verified compatibility list/);
+});
+
+test('compatibility guidance distinguishes documented MPE from limited or unconfirmed support', () => {
+  assert.match(html, /MPE documented: Live 11 or later/);
+  assert.match(html, /MPE documented: version 5\.3 or later/);
+  assert.match(html, /Limited: live playing and recording differ/);
+  assert.match(html, /Unconfirmed: depends on the release/);
+  assert.match(html, /Not recommended for per-note MPE/);
+  assert.match(html, /Physical USB recording tests with Glissando are still pending/);
 });
 
 test('play works directly from the connection help view', () => {
