@@ -8,10 +8,12 @@ const root = resolve(__dirname, '..');
 const out = process.env.GLISSANDO_QA_DIR || resolve(root, '..', '..', 'qa-web-only');
 mkdirSync(out, { recursive: true });
 const server = createServer({ root });
+const skin = process.env.GLISSANDO_SKIN || 'original';
 
 async function prepare(context, permission = 'prompt', ports = []) {
   await context.route(/google|clarity\.ms/, route => route.abort());
-  await context.addInitScript(({ permission, ports }) => {
+  await context.addInitScript(({ permission, ports, skin }) => {
+    if (!localStorage.getItem('glissando.skin')) localStorage.setItem('glissando.skin', skin);
     const watch = { state: permission, onchange: null };
     const access = { outputs: new Map(), onstatechange: null };
     const messages = [];
@@ -60,7 +62,7 @@ async function prepare(context, permission = 'prompt', ports = []) {
       window.__meter.getFloatTimeDomainData(values);
       return Math.max(...values.map(Math.abs));
     };
-  }, { permission, ports });
+  }, { permission, ports, skin });
 }
 
 (async () => {
@@ -76,12 +78,33 @@ async function prepare(context, permission = 'prompt', ports = []) {
     await page.goto(url);
     assert.equal(await page.locator('#popupBackdrop').isVisible(), false);
     assert.equal(await page.evaluate(() => __midi.requests), 0);
+    assert.equal(await page.locator('#skinSelect').inputValue(), skin);
+    const gridBefore = await page.locator('.note-label').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().x + n.getBoundingClientRect().width / 2));
     await page.screenshot({ animations: 'disabled', path: join(out, 'desktop-instrument.png') });
     await page.mouse.move(560, 300);
     await page.mouse.down();
     await page.waitForFunction(() => __audio.state === 'running' && __peak() > 0.01);
+    await page.evaluate(() => { window.__originalAudio = __audio; });
+    const other = skin === 'original' ? 'chroma' : 'original';
+    await page.locator('#skinSelect').selectOption(other);
+    assert.equal(await page.evaluate(() => __audio === __originalAudio && Controller.isPlaying), true);
+    await page.waitForFunction(() => __peak() > 0.01);
+    const gridAfter = await page.locator('.note-label').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().x + n.getBoundingClientRect().width / 2));
+    assert.deepEqual(gridAfter, gridBefore);
     await page.mouse.up();
     assert.equal(await page.evaluate(() => __midi.requests), 0);
+    await page.reload();
+    assert.equal(await page.locator('#skinSelect').inputValue(), other);
+    assert.equal(await page.locator('html').getAttribute('data-skin'), other);
+    await page.locator('#skinSelect').selectOption(skin);
+    await page.locator('#skinSelect').focus();
+    await page.keyboard.press('Home');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma');
+    await page.keyboard.press('ArrowUp');
+    assert.equal(await page.locator('#skinSelect').inputValue(), 'original');
+    await page.locator('#skinSelect').selectOption(skin);
+    console.log('PASS: skin selection persists and leaves active audio, pitch positions and MIDI permission unchanged');
 
     for (const exit of ['play', 'close', 'escape', 'backdrop']) {
       await page.reload();
@@ -133,7 +156,7 @@ async function prepare(context, permission = 'prompt', ports = []) {
       await page.evaluate(() => { document.getElementById('bar').scrollLeft = 0; document.getElementById('botBar').scrollLeft = 0; });
       await page.screenshot({ animations: 'disabled', path: join(out, `${name}-instrument.png`) });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      for (const id of ['modeBtn', 'helpBtn']) {
+      for (const id of ['modeBtn', 'helpBtn', 'skinSelect']) {
         const control = await page.locator('#' + id).boundingBox();
         assert.ok(control.x >= 0 && control.x + control.width <= width + 1, `${id} must be visible without scrolling`);
       }
@@ -159,6 +182,10 @@ async function prepare(context, permission = 'prompt', ports = []) {
     const cdp = await mpe.newCDPSession(midiPage);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 450, y: 320, id: 1 }, { x: 458, y: 324, id: 2 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 520, y: 290, id: 1 }, { x: 525, y: 300, id: 2 }] });
+    const beforeSkin = await midiPage.evaluate(() => __midi.messages.filter(m => [0x80, 0x90].includes(m.bytes[0] & 0xf0)).length);
+    await midiPage.locator('#skinSelect').selectOption(skin === 'original' ? 'chroma' : 'original');
+    await midiPage.locator('#skinSelect').selectOption(skin);
+    assert.equal(await midiPage.evaluate(() => __midi.messages.filter(m => [0x80, 0x90].includes(m.bytes[0] & 0xf0)).length), beforeSkin);
     await midiPage.screenshot({ animations: 'disabled', path: join(out, 'mpe-close-fingers.png') });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     const messages = await midiPage.evaluate(() => __midi.messages.map(m => m.bytes));
@@ -168,6 +195,23 @@ async function prepare(context, permission = 'prompt', ports = []) {
     assert.ok(messages.some(m => m[0] === 0x82));
     await midiPage.reload();
     await midiPage.waitForFunction(() => document.getElementById('modeBtn').textContent === 'output: midi');
+    if (skin === 'chroma') {
+      await midiPage.setViewportSize({ width: 1448, height: 1086 });
+      const ends = [{ x: 253, y: 610, id: 1 }, { x: 725, y: 460, id: 2 }, { x: 1140, y: 520, id: 3 }];
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: ends.map(p => ({ ...p, x: p.x + 80, y: p.y - 100 })) });
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: ends.map(p => ({ ...p, x: p.x + 80 * (1 - i / 8), y: p.y - 100 * (1 - i / 8) ** 2 })) });
+      }
+      await midiPage.screenshot({ animations: 'disabled', path: join(out, 'chroma-reference-playing.png') });
+      assert.ok(await midiPage.evaluate(() => {
+        const canvas = document.getElementById('touchLayer');
+        const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        let painted = 0;
+        for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) painted++;
+        return painted > 500;
+      }));
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    }
     console.log('PASS: granted-permission boot, saved-port reload and close-finger MPE channels/release');
     await mpe.close();
     assert.deepEqual(errors, []);

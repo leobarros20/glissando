@@ -1,4 +1,4 @@
-const VERSION = '0f2ac2f35c220f40';
+const VERSION = '0d531726e4a3c7e3';
 const CACHE_PREFIX = 'glissando:' + self.registration.scope + ':';
 const CACHE_NAME = CACHE_PREFIX + VERSION;
 const ASSETS = ['index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];

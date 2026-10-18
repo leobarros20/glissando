@@ -5,6 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glissando</title>
 <meta name="theme-color" content="#0a0d12">
+<script>
+// Apply the saved appearance before the first paint, including offline launches.
+const Appearance = (() => {
+  const key = 'glissando.skin';
+  const classic = ['#ff7a59','#ffd166','#5ad17a','#5ec8ff','#c79bff'];
+  const chroma = ['#285ddd','#ee493c','#249e87','#b28710','#a2489c'];
+  let current = 'original';
+  function apply(value, persist = false) {
+    current = value === 'chroma' ? 'chroma' : 'original';
+    document.documentElement.dataset.skin = current;
+    document.documentElement.style.colorScheme = current === 'chroma' ? 'light' : 'dark';
+    document.querySelector('meta[name="theme-color"]').content = current === 'chroma' ? '#f0f1f2' : '#0a0d12';
+    if (persist) {
+      try { localStorage.setItem(key, current); } catch (_) { /* Storage can be unavailable in private browsing. */ }
+    }
+  }
+  try { current = localStorage.getItem(key); } catch (_) {}
+  apply(current);
+  return {
+    apply,
+    get current() { return current; },
+    color(value) { return current === 'chroma' ? (chroma[classic.indexOf(value)] || value) : value; },
+  };
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Glissando">
@@ -806,6 +831,103 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* Appearance stays reachable even when the musical toolbar scrolls. */
+  #bar { right: 184px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  #bar > * { flex-shrink: 0; }
+  #appearanceTools {
+    position: fixed; top: 0; right: 0; height: var(--top-bar-h);
+    display: flex; align-items: center; gap: 8px; padding: 0 12px 0 8px;
+    background: #0a0d12; z-index: 10;
+  }
+  #skinSelect {
+    width: 122px; height: 34px; padding: 0 7px;
+    border: 1px solid #596270; border-radius: 6px;
+    background: #161c24; color: #e6e8ec; font: 12px system-ui, sans-serif;
+    cursor: pointer;
+  }
+  #appearanceTools #helpBtn { position: static; width: 34px; height: 34px; }
+  #skinSelect:focus-visible { outline: 2px solid #5ec8ff; outline-offset: 2px; }
+  .skin-brand { display: none; }
+  #pitchBands { position: absolute; inset: 0; display: none; }
+  .pitch-band { position: absolute; top: 0; bottom: 0; }
+
+  /* Chroma is presentation only: the pitch grid and all MIDI routing stay unchanged. */
+  html[data-skin="chroma"], [data-skin="chroma"] body {
+    background: #f0f1f2; color: #171717; font-family: Arial, Helvetica, sans-serif;
+  }
+  [data-skin="chroma"] * { letter-spacing: 0; }
+  [data-skin="chroma"] :is(#bar, #botBar, #midiPanel, #popup, .dd-menu) * { letter-spacing: 0; }
+  [data-skin="chroma"] #bar, [data-skin="chroma"] #botBar,
+  [data-skin="chroma"] #appearanceTools { background: #f0f1f2; border-color: #cdd1d5; }
+  [data-skin="chroma"] .skin-brand {
+    display: block; font-size: 23px; font-weight: 800; text-transform: none;
+    margin-right: 8px;
+  }
+  [data-skin="chroma"] #pitchBands { display: block; }
+  [data-skin="chroma"] .pitch-band { background: #f5f6f7; border-left: 1px solid #d4d8dc; }
+  [data-skin="chroma"] .pitch-band:nth-child(even) { background: #e7e9ec; }
+  [data-skin="chroma"] .note-label {
+    top: auto; bottom: 18px; font: 600 16px Arial, sans-serif;
+    color: #171717; text-shadow: none;
+  }
+  [data-skin="chroma"] .note-label.tonic { color: #d93126; font-weight: 700; }
+  [data-skin="chroma"] .note-label.near,
+  [data-skin="chroma"] .note-label.in-tune,
+  [data-skin="chroma"] .note-label.snap-locked { color: #204bb1; text-shadow: none; }
+  [data-skin="chroma"] .note-line-wrap .note-line-path { stroke: transparent; filter: none; animation: none; }
+  [data-skin="chroma"] .note-line-wrap.near .note-line-path { stroke: #7c8999; stroke-width: 1.5; }
+  [data-skin="chroma"] .note-line-wrap.in-tune .note-line-path,
+  [data-skin="chroma"] .note-line-wrap.snap-locked .note-line-path { stroke: #285ddd; stroke-width: 2; }
+  [data-skin="chroma"] .note-glow, [data-skin="chroma"] .hint-gradient,
+  [data-skin="chroma"] .magnet-ring, [data-skin="chroma"] .deadzone { display: none; }
+  [data-skin="chroma"] .module + .module { border-color: #cdd1d5; }
+  [data-skin="chroma"] :is(.label-ui, .seg-opt, #midiPanel h3, #midiPanel label,
+    .popup-sub, .popup-tip, .popup-back, .popup-link, .popup-close) { color: #525a63; }
+  [data-skin="chroma"] :is(.dd, .dd-button, .dd-menu, .pill, .seg-control,
+    .span-toggle, .icon-btn, .popup-title, .popup-title-sm, .popup-cta, .popup-sub,
+    .popup-help h3, .popup-help summary, .popup-link, .popup-back, .popup-tip,
+    .tip-content, #midiPanel h3) { font-family: Arial, Helvetica, sans-serif; text-transform: none; }
+  [data-skin="chroma"] :is(.dd-button, .pill, .seg-control, .span-toggle, .icon-btn, #skinSelect) {
+    background: #fafbfc; color: #171717; border-color: #b9bec5; border-radius: 6px;
+  }
+  [data-skin="chroma"] :is(.dd-button, .pill) { min-height: 30px; }
+  [data-skin="chroma"] :is(.seg-control, .span-toggle) { height: 32px; }
+  [data-skin="chroma"] :is(.seg-opt, .span-side, .span-side::before) { border-radius: 4px; }
+  [data-skin="chroma"] .seg-opt.on { background: #e8bc35; color: #171717; }
+  [data-skin="chroma"] .span-toggle .span-side::before { background: #171717; }
+  [data-skin="chroma"] :is(.seg-label, .span-toggle .span-center) { color: #171717; }
+  [data-skin="chroma"] :is(.pill.on, .pill:active, .dd-button.open) { background: #dce8fa; color: #173e8f; border-color: #285ddd; }
+  [data-skin="chroma"] :is(.dd-button:hover, .pill:hover, .icon-btn:hover) { background: #e4e8ed; }
+  [data-skin="chroma"] .dd-button::after { border-top-color: #171717; }
+  [data-skin="chroma"] :is(.dd-menu, #midiPanel, .popup, .tip-content) {
+    background: #fafbfc; color: #171717; border-color: #cdd1d5; border-radius: 8px;
+    box-shadow: 0 8px 28px #17171724;
+  }
+  [data-skin="chroma"] .dd-option { color: #171717; }
+  [data-skin="chroma"] :is(.dd-option:hover, .dd-option.selected) { color: #173e8f; background: #dce8fa; }
+  [data-skin="chroma"] .dd-option.disabled { color: #757d87; }
+  [data-skin="chroma"] :is(.popup-title, .popup-title-sm, .popup-help h3,
+    .popup-help strong, .popup-help summary, #dawGuideStatus, #midiPanel .status) { color: #171717; }
+  [data-skin="chroma"] :is(.popup-help, .popup-help details p, #midiPanel .help) { color: #49525d; }
+  [data-skin="chroma"] :is(.popup-help details, #midiPanel .help) { border-color: #d4d8dc; }
+  [data-skin="chroma"] .popup-cta { color: #171717; background: #e8bc35; border-color: #b28710; }
+  [data-skin="chroma"] .popup-cta:hover { background: #f0ca50; }
+  [data-skin="chroma"] :is(.popup-help a, .popup-link:hover, .popup-back:hover) { color: #204bb1; }
+  [data-skin="chroma"] #dawGuideSelect { background: #fff; color: #171717; border-color: #b9bec5; }
+  [data-skin="chroma"] #appUpdateNotice, [data-skin="chroma"] #helpBtn.update-ready { color: #14735d; }
+  [data-skin="chroma"] :is(.mode-indicator::before, #midiPanel .dot) { box-shadow: none; }
+  [data-skin="chroma"] #panic { color: #b72018; border-color: #ee493c; }
+  [data-skin="chroma"] .finger-slot { background: #fff; border-color: #cdd1d5; }
+  [data-skin="chroma"] .finger-slot .name { color: color-mix(in srgb, var(--slot-color, #171717) 78%, #000); }
+  [data-skin="chroma"] .finger-slot.empty { background: transparent; }
+  [data-skin="chroma"] .finger-slot.empty .name { color: #737c87; }
+  [data-skin="chroma"] :is(.finger-slot .num, .finger-slot .cents, .finger-slot .hz) { color: #525a63; }
+  [data-skin="chroma"] :focus-visible { outline: 2px solid #285ddd; outline-offset: 2px; }
+  @media (max-width: 600px) {
+    [data-skin="chroma"] .skin-brand { display: none; }
+    [data-skin="chroma"] .note-label { font-size: 12px; bottom: 14px; }
+  }
 </style>
 <!-- Microsoft Clarity analytics -->
 <script type="text/javascript">
@@ -829,6 +951,7 @@
 
 <div id="stage">
   <div id="gridLayer">
+    <div id="pitchBands" aria-hidden="true"></div>
     <div id="gridContent"></div>
     <div id="hintLayer"></div>
     <div class="deadzone left"></div>
@@ -839,6 +962,7 @@
 
 <!-- TOP BAR: modifiers (musical) -->
 <div id="bar">
+  <span class="skin-brand">Glissando</span>
   <div class="module">
     <!-- octave segmented control with arrows on the sides -->
     <div class="seg-control" id="octSeg">
@@ -878,6 +1002,12 @@
   </div>
 
   <div class="spacer"></div>
+</div>
+<div id="appearanceTools">
+  <select id="skinSelect" aria-label="Skin" title="Skin">
+    <option value="original">Skin: Original</option>
+    <option value="chroma">Skin: Chroma</option>
+  </select>
   <button class="icon-btn" id="helpBtn" title="quick setup">?</button>
 </div>
 
@@ -1016,6 +1146,10 @@
 </div>
 
 <script>
+const skinSelect = document.getElementById('skinSelect');
+skinSelect.value = Appearance.current;
+skinSelect.addEventListener('change', () => Appearance.apply(skinSelect.value, true));
+
 /* ============================================================================
    DROPDOWN
 ============================================================================ */
@@ -1753,6 +1887,7 @@ const GridView = (() => {
     const notes = State.notes;
     if (!notes.length) return;
     const frag = document.createDocumentFragment();
+    const bands = document.createDocumentFragment();
     const slots = notes.length - 1;
     const pad = State.pad * 100;
     const padPx = window.innerWidth * State.pad;
@@ -1766,6 +1901,15 @@ const GridView = (() => {
       const note = notes[i];
       const tonic = State.isTonic(note);
       const fifth = State.isFifth(note);
+
+      const band = document.createElement('div');
+      band.className = 'pitch-band';
+      const halfStep = (100 - 2 * pad) / slots / 2;
+      const start = i === 0 ? 0 : pctNum - halfStep;
+      const end = i === slots ? 100 : pctNum + halfStep;
+      band.style.left = start + '%';
+      band.style.width = (end - start) + '%';
+      bands.appendChild(band);
 
       if (tonic) {
         const glow = document.createElement('div');
@@ -1798,6 +1942,7 @@ const GridView = (() => {
       }
     }
     container.replaceChildren(frag);
+    document.getElementById('pitchBands').replaceChildren(bands);
   }
 
   /* set the SVG path d-attribute based on stored bend + animated wiggle */
@@ -2003,7 +2148,10 @@ const TouchView = (() => {
     syncSize();
     if (W < 10 || H < 10) return;
     ctx.clearRect(0, 0, W, H);
+    const chroma = Appearance.current === 'chroma';
+    const labels = [];
     for (const f of fingers.values()) {
+      const color = Appearance.color(f.color);
       while (f.trail.length && now - f.trail[0].t > TRAIL_LIFESPAN) f.trail.shift();
       if (f.trail.length > 1) {
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -2011,14 +2159,34 @@ const TouchView = (() => {
           const a = f.trail[i-1], b = f.trail[i];
           const age = now - b.t;
           const alpha = Math.max(0, 1 - age / TRAIL_LIFESPAN);
-          ctx.strokeStyle = f.color;
+          ctx.strokeStyle = color;
           ctx.globalAlpha = alpha * 0.7;
-          ctx.lineWidth = 3 + alpha * 5;
+          ctx.lineWidth = chroma ? 2 + alpha * 3 : 3 + alpha * 5;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
+      }
+      if (chroma) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(f.x, f.y, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#171717'; ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(f.x, f.y, 11, 0, Math.PI * 2); ctx.fill();
+        const name = State.pitchInfo(f.currentPitch).name;
+        ctx.font = '600 16px Arial, sans-serif';
+        const width = ctx.measureText(name).width;
+        const x = Math.max(4, Math.min(W - width - 4, f.x + 9));
+        const y = Math.max(75, Math.min(H - 95, f.y + 38));
+        const box = { x, y: y - 18, width, height: 22 };
+        const overlaps = labels.some(b => x < b.x + b.width && x + width > b.x && box.y < b.y + b.height && y > b.y)
+          || [...fingers.values()].some(p => Math.abs(p.x - (x + width / 2)) < width / 2 + 16 && Math.abs(p.y - (y - 7)) < 27);
+        if (!overlaps) {
+          ctx.fillStyle = '#171717'; ctx.fillText(name, x, y); labels.push(box);
+        }
+        continue;
       }
       const gOuter = ctx.createRadialGradient(f.x, f.y, 4, f.x, f.y, GLOW_RADIUS);
       gOuter.addColorStop(0, f.color);
@@ -2073,7 +2241,7 @@ const FingersView = (() => {
     const display = [];
     for (const pid of arrivalOrder) {
       const f = fingers.get(pid);
-      if (f) display.push({ voice: f.voice, color: f.color });
+      if (f) display.push({ voice: f.voice, color: Appearance.color(f.color) });
     }
     for (const v of heldVoices) display.push({ voice: v, color: '#7a8290' });
     for (let i = 0; i < 5; i++) {

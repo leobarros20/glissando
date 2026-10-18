@@ -87,9 +87,12 @@ async function appHelp(page) {
     assert.equal(await page.locator('#appInstall').isVisible(), false);
     await page.screenshot({ path: join(out, 'mobile-app-options.png') });
     await page.locator('#popupHelpPlayBtn').click();
+    await page.locator('#skinSelect').selectOption('chroma');
 
     await context.setOffline(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma');
+    assert.equal(await page.locator('html').getAttribute('data-skin'), 'chroma');
     // Edge can keep navigator.onLine true under network emulation; prove the
     // uncached network is blocked and the complete offline shell is still ready.
     assert.equal(await page.evaluate(async () => {
@@ -136,6 +139,7 @@ async function appHelp(page) {
       await page.waitForFunction(() => document.querySelector('meta[name="qa-release"]').content === 'two');
       assert.equal(await page.evaluate(() => window.__sessionToken), undefined);
       assert.equal(await page.evaluate(() => __midiRequests), 0);
+      assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma');
       console.log('PASS: deployment does not interrupt held notes; explicit update guards notes and other windows, then reopens new release');
 
       // A failed precache must leave the last complete offline release usable.
