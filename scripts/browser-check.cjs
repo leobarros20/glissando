@@ -85,7 +85,7 @@ async function prepare(context, permission = 'prompt', ports = []) {
     await page.mouse.down();
     await page.waitForFunction(() => __audio.state === 'running' && __peak() > 0.01);
     await page.evaluate(() => { window.__originalAudio = __audio; });
-    const other = skin === 'original' ? 'chroma' : 'original';
+    const other = skin === 'chroma-dark' ? 'chroma' : 'chroma-dark';
     await page.locator('#skinSelect').selectOption(other);
     assert.equal(await page.evaluate(() => __audio === __originalAudio && Controller.isPlaying), true);
     await page.waitForFunction(() => __peak() > 0.01);
@@ -101,10 +101,54 @@ async function prepare(context, permission = 'prompt', ports = []) {
     await page.keyboard.press('Home');
     await page.keyboard.press('ArrowDown');
     assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma-dark');
+    await page.keyboard.press('ArrowUp');
     await page.keyboard.press('ArrowUp');
     assert.equal(await page.locator('#skinSelect').inputValue(), 'original');
     await page.locator('#skinSelect').selectOption(skin);
+    if (skin !== 'original') {
+      const geometry = async () => page.locator('#bar, #botBar, #skinSelect, .note-label, .pitch-band').evaluateAll(nodes => nodes.map(el => {
+        const { x, y, width, height } = el.getBoundingClientRect();
+        return { x, y, width, height };
+      }));
+      const before = await geometry();
+      await page.locator('#skinSelect').selectOption(skin === 'chroma' ? 'chroma-dark' : 'chroma');
+      assert.deepEqual(await geometry(), before, 'Light and dark must use identical geometry');
+      await page.locator('#skinSelect').selectOption(skin);
+      await page.waitForFunction(expected => getComputedStyle(document.querySelector('#spanToggle .span-side.right')).color === expected,
+        skin === 'chroma' ? 'rgb(255, 255, 255)' : 'rgb(24, 25, 27)');
+      const pairs = await page.evaluate(() => {
+        const style = getComputedStyle(document.documentElement);
+        const token = name => style.getPropertyValue(name).trim();
+        const selected = getComputedStyle(document.querySelector('#snapSeg .on'));
+        const inverse = getComputedStyle(document.querySelector('#spanToggle .span-side.right'));
+        return {
+          body: [token('--color-text'), token('--color-surface')],
+          muted: [token('--color-muted'), token('--color-surface')],
+          tonic: [token('--color-tonic'), token('--color-lane-alt')],
+          link: [token('--color-link'), token('--color-surface')],
+          selected: [selected.color, selected.backgroundColor],
+          inverse: [inverse.color, token('--color-inverse')],
+        };
+      });
+      function luminance(color) {
+        const channels = color.startsWith('#') ? color.slice(1).match(/../g).map(s => parseInt(s, 16)) : color.match(/[\d.]+/g).slice(0, 3).map(Number);
+        const [r, g, b] = channels.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
+        return .2126 * r + .7152 * g + .0722 * b;
+      }
+      for (const [name, [foreground, background]] of Object.entries(pairs)) {
+        const a = luminance(foreground), b = luminance(background);
+        assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, `${name} text contrast must be at least 4.5:1 (${foreground} on ${background})`);
+      }
+      assert.equal(await page.evaluate(() => Appearance.paint.ink), skin === 'chroma' ? '#171717' : '#f1f2f4');
+      assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'), skin === 'chroma' ? '#f0f1f2' : '#18191b');
+      console.log('PASS: shared light/dark geometry, semantic text contrast and CSS-driven canvas/browser colors');
+    }
     console.log('PASS: skin selection persists and leaves active audio, pitch positions and MIDI permission unchanged');
+    await page.locator('#rootDd button').click();
+    await page.screenshot({ animations: 'disabled', path: join(out, 'desktop-root-menu.png') });
+    await page.locator('#rootDd button').click();
 
     for (const exit of ['play', 'close', 'escape', 'backdrop']) {
       await page.reload();
@@ -151,7 +195,7 @@ async function prepare(context, permission = 'prompt', ports = []) {
     await page.screenshot({ animations: 'disabled', path: join(out, 'desktop-help.png') });
     await page.locator('#popupClose').click();
 
-    for (const [name, width, height] of [['mobile', 390, 844], ['mobile-landscape', 844, 390], ['tablet', 1024, 768]]) {
+    for (const [name, width, height] of [['desktop', 1280, 720], ['mobile', 390, 844], ['small-mobile', 320, 568], ['mobile-landscape', 844, 390], ['tablet', 1024, 768], ['wide-desktop', 1920, 1080]]) {
       await page.setViewportSize({ width, height });
       await page.evaluate(() => { document.getElementById('bar').scrollLeft = 0; document.getElementById('botBar').scrollLeft = 0; });
       await page.screenshot({ animations: 'disabled', path: join(out, `${name}-instrument.png`) });
@@ -183,7 +227,7 @@ async function prepare(context, permission = 'prompt', ports = []) {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 450, y: 320, id: 1 }, { x: 458, y: 324, id: 2 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 520, y: 290, id: 1 }, { x: 525, y: 300, id: 2 }] });
     const beforeSkin = await midiPage.evaluate(() => __midi.messages.filter(m => [0x80, 0x90].includes(m.bytes[0] & 0xf0)).length);
-    await midiPage.locator('#skinSelect').selectOption(skin === 'original' ? 'chroma' : 'original');
+    for (const value of ['original', 'chroma', 'chroma-dark']) await midiPage.locator('#skinSelect').selectOption(value);
     await midiPage.locator('#skinSelect').selectOption(skin);
     assert.equal(await midiPage.evaluate(() => __midi.messages.filter(m => [0x80, 0x90].includes(m.bytes[0] & 0xf0)).length), beforeSkin);
     await midiPage.screenshot({ animations: 'disabled', path: join(out, 'mpe-close-fingers.png') });
@@ -195,7 +239,7 @@ async function prepare(context, permission = 'prompt', ports = []) {
     assert.ok(messages.some(m => m[0] === 0x82));
     await midiPage.reload();
     await midiPage.waitForFunction(() => document.getElementById('modeBtn').textContent === 'output: midi');
-    if (skin === 'chroma') {
+    if (skin !== 'original') {
       await midiPage.setViewportSize({ width: 1448, height: 1086 });
       const ends = [{ x: 253, y: 610, id: 1 }, { x: 725, y: 460, id: 2 }, { x: 1140, y: 520, id: 3 }];
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: ends.map(p => ({ ...p, x: p.x + 80, y: p.y - 100 })) });

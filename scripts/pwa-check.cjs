@@ -5,6 +5,7 @@ const { chromium } = require('playwright');
 const { createServer } = require('./static-server.cjs');
 
 const out = process.env.GLISSANDO_QA_DIR || resolve(__dirname, '..', '..', '..', 'qa-pwa');
+const skin = process.env.GLISSANDO_SKIN || 'chroma-dark';
 mkdirSync(out, { recursive: true });
 let release = 'one';
 let breakIcon = false;
@@ -87,12 +88,12 @@ async function appHelp(page) {
     assert.equal(await page.locator('#appInstall').isVisible(), false);
     await page.screenshot({ path: join(out, 'mobile-app-options.png') });
     await page.locator('#popupHelpPlayBtn').click();
-    await page.locator('#skinSelect').selectOption('chroma');
+    await page.locator('#skinSelect').selectOption(skin);
 
     await context.setOffline(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma');
-    assert.equal(await page.locator('html').getAttribute('data-skin'), 'chroma');
+    assert.equal(await page.locator('#skinSelect').inputValue(), skin);
+    assert.equal(await page.locator('html').getAttribute('data-skin'), skin);
     // Edge can keep navigator.onLine true under network emulation; prove the
     // uncached network is blocked and the complete offline shell is still ready.
     assert.equal(await page.evaluate(async () => {
@@ -139,7 +140,7 @@ async function appHelp(page) {
       await page.waitForFunction(() => document.querySelector('meta[name="qa-release"]').content === 'two');
       assert.equal(await page.evaluate(() => window.__sessionToken), undefined);
       assert.equal(await page.evaluate(() => __midiRequests), 0);
-      assert.equal(await page.locator('#skinSelect').inputValue(), 'chroma');
+      assert.equal(await page.locator('#skinSelect').inputValue(), skin);
       console.log('PASS: deployment does not interrupt held notes; explicit update guards notes and other windows, then reopens new release');
 
       // A failed precache must leave the last complete offline release usable.
