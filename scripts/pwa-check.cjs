@@ -92,6 +92,8 @@ async function appHelp(page) {
 
     await context.setOffline(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => document.fonts.ready);
+    assert.equal(await page.evaluate(() => document.fonts.check('700 16px "Nunito Sans"')), true, 'Embedded font loads offline');
     assert.equal(await page.locator('#skinSelect').inputValue(), skin);
     assert.equal(await page.locator('html').getAttribute('data-skin'), skin);
     // Edge can keep navigator.onLine true under network emulation; prove the

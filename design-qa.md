@@ -1,4 +1,42 @@
-# Chroma Light / Dark QA
+# UI Consolidation QA
+
+Date: 2026-10-25
+
+## Scope and Evidence
+
+Refine the selected Chroma direction, preserve all three skins and the musical
+behavior. Current-run before/after captures are in the workspace's
+`qa-ui-polish/{before,light,dark,original,pwa}` directories. No new visual concept
+or alternate app was introduced.
+
+1. Instrument: corrected half-note stripe offset. Stripe boundaries, labels and
+   guide anchors now share a coordinate. Nunito Sans is embedded; desktop and
+   mobile controls share a 40px height, consistent padding and centered labels.
+   Narrow headers separate appearance/help from the scrollable musical row.
+2. Output: selects, action buttons and status rows use the shared primitives.
+   The existing permission, hot-plug, test-note and fallback flows passed.
+3. Help: shared type scale and control sizing, including the DAW field. Close
+   remains visible while scrolling and aligns with Back. All four help exits
+   still allow measured browser audio.
+4. Dense scales: tonic-priority label fitting avoids collisions at 320px without
+   changing pitches. Keyboard range selection and every scale/span were tested.
+5. Offline app: embedded font and skin survive offline reload; updates preserve
+   held notes, enforce the other-window guard and retain a complete older cache
+   if the next release cannot be fully cached.
+
+## Validation
+
+- 44 unit tests passed; `git diff --check` passed.
+- Playwright/Edge screenshots inspected at 320, 390, 844, 1024, 1280, 1448 and
+  1920px widths. Scripted checks cover shared geometry, readable semantic text
+  contrast, panel bounds, active canvas pixels, audio and independent MPE channels.
+- Additional checks cover 40px controls, group alignment, label/stripe/guide
+  coordinates, font availability and keyboard range activation.
+- Remaining constraints: narrow toolbars intentionally scroll; a physical phone
+  and hardware DAW were not available. MIDI tests use mocked ports. This is not
+  a complete accessibility or real-device certification.
+
+## Archived Review: Chroma Light / Dark
 
 Date: 2026-10-24
 

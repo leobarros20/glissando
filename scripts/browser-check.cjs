@@ -76,6 +76,8 @@ async function prepare(context, permission = 'prompt', ports = []) {
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(url);
+    await page.evaluate(() => document.fonts.ready);
+    assert.equal(await page.evaluate(() => document.fonts.check('700 16px "Nunito Sans"')), true);
     assert.equal(await page.locator('#popupBackdrop').isVisible(), false);
     assert.equal(await page.evaluate(() => __midi.requests), 0);
     assert.equal(await page.locator('#skinSelect').inputValue(), skin);
@@ -197,7 +199,37 @@ async function prepare(context, permission = 'prompt', ports = []) {
 
     for (const [name, width, height] of [['desktop', 1280, 720], ['mobile', 390, 844], ['small-mobile', 320, 568], ['mobile-landscape', 844, 390], ['tablet', 1024, 768], ['wide-desktop', 1920, 1080]]) {
       await page.setViewportSize({ width, height });
+      await page.waitForFunction(() => Math.abs(GridView.frame.top - document.getElementById('gridLayer').getBoundingClientRect().top) < 1);
       await page.evaluate(() => { document.getElementById('bar').scrollLeft = 0; document.getElementById('botBar').scrollLeft = 0; });
+      const layoutIssues = await page.evaluate(() => {
+        const issues = [];
+        for (const el of document.querySelectorAll('#appHeader .seg-control, #appHeader .span-toggle, #appHeader .dd-button, #skinSelect, #helpBtn, #botBar button')) {
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          if (Math.abs(rect.height - 40) > .1) issues.push(`${el.id || el.className}: height ${rect.height}`);
+          if (!style.fontFamily.includes('Nunito Sans')) issues.push(`${el.id}: inconsistent font`);
+        }
+        for (const group of document.querySelectorAll('#appHeader .module, #botBar .module, #appearanceTools')) {
+          const centers = [...group.children].map(el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; });
+          if (Math.max(...centers) - Math.min(...centers) > 1) issues.push(`${group.id || group.className}: misaligned baseline`);
+        }
+        const brand = document.querySelector('.skin-brand').getBoundingClientRect();
+        const tools = document.getElementById('appearanceTools').getBoundingClientRect();
+        if (brand.right > tools.left) issues.push('brand overlaps appearance controls');
+        if (Appearance.isChroma) {
+          const bands = [...document.querySelectorAll('.pitch-band')];
+          const lines = [...document.querySelectorAll('.note-line-wrap')];
+          const labels = [...document.querySelectorAll('.note-label')];
+          bands.forEach((band, i) => {
+            const edge = band.getBoundingClientRect().left;
+            const line = lines[i].getBoundingClientRect();
+            const label = labels[i].getBoundingClientRect();
+            if (Math.abs(edge - line.left - line.width / 2) > 1 || Math.abs(edge - label.left - label.width / 2) > 1) issues.push(`stripe ${i}: not aligned to note`);
+          });
+        }
+        return issues;
+      });
+      assert.deepEqual(layoutIssues, [], `${name}: consistent primitives and stripe/guide/label alignment`);
       await page.screenshot({ animations: 'disabled', path: join(out, `${name}-instrument.png`) });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       for (const id of ['modeBtn', 'helpBtn', 'skinSelect']) {
@@ -212,9 +244,46 @@ async function prepare(context, permission = 'prompt', ports = []) {
       await page.locator('#helpBtn').click();
       const bounds = await page.locator('#popup').boundingBox();
       assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1);
+      const dawSelect = await page.locator('#dawGuideSelect').boundingBox();
+      assert.equal(dawSelect.height, 40, 'DAW select uses the shared control primitive');
+      await page.locator('#popup').evaluate(el => { el.scrollTop = el.scrollHeight; });
+      const close = await page.locator('#popupClose').boundingBox();
+      assert.ok(close.y >= bounds.y && close.y + close.height <= bounds.y + bounds.height, 'Help close remains visible after scrolling');
+      await page.locator('#popup').evaluate(el => { el.scrollTop = 0; });
+      const back = await page.locator('.popup-back').boundingBox();
+      const closeAtTop = await page.locator('#popupClose').boundingBox();
+      assert.ok(Math.abs(back.y - closeAtTop.y) < 1, 'Help navigation shares one baseline');
       await page.screenshot({ animations: 'disabled', path: join(out, `${name}-help.png`) });
       await page.locator('#popupClose').click();
     }
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.locator('#spanToggle').focus();
+    await page.keyboard.press('Space');
+    assert.equal(await page.locator('#spanToggle').getAttribute('data-val'), '1');
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#spanToggle').getAttribute('data-val'), '2');
+    const stripeIssues = await page.evaluate(() => {
+      const issues = [];
+      for (let scale = 0; scale < State.SCALE_TYPES.length; scale++) {
+        State.setType(scale);
+        for (const span of [1, 2]) {
+          State.setSpan(span);
+          const bands = [...document.querySelectorAll('.pitch-band')];
+          const lines = [...document.querySelectorAll('.note-line-wrap')];
+          if (bands.length !== State.notes.length) issues.push(`scale ${scale}: wrong stripe count`);
+          bands.forEach((band, i) => {
+            if (band.style.left !== lines[i].style.left || parseFloat(band.style.width) <= 0) issues.push(`scale ${scale}, span ${span}, stripe ${i}: alignment`);
+          });
+          const labels = [...document.querySelectorAll('.note-label')].filter(el => getComputedStyle(el).visibility !== 'hidden').map(el => el.getBoundingClientRect());
+          for (let i = 1; i < labels.length; i++) {
+            if (labels[i - 1].right > labels[i].left) issues.push(`scale ${scale}, span ${span}: overlapping labels`);
+          }
+        }
+      }
+      return issues;
+    });
+    assert.deepEqual(stripeIssues, []);
+    console.log('PASS: 40px controls, aligned baselines, embedded font, keyboard range, sticky help close and note-aligned stripes across every scale/span');
     await context.close();
 
     const mpe = await browser.newContext({ viewport: { width: 1280, height: 720 }, hasTouch: true });

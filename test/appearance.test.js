@@ -62,6 +62,7 @@ test('both Chroma themes define the same tokens without duplicating component ru
     return [...block.matchAll(/(--[\w-]+):/g)].map(m => m[1]).sort();
   }
   assert.deepEqual(names('chroma'), names('chroma-dark'));
+  assert.deepEqual(names('original'), names('chroma'));
   assert.ok(names('chroma').length >= 30);
   assert.doesNotMatch(html, /\[data-skin="chroma-dark"\]\s+\S+\s*\{/);
 });
@@ -94,4 +95,23 @@ test('skin palettes preserve finger identity and leave unknown colors intact', (
   assert.equal(appearance.color('#7a8290'), '#7a8290');
   appearance.apply('original');
   assert.equal(appearance.color('#ff7a59'), '#ff7a59');
+});
+
+test('the friendly variable font is embedded with its license in the standalone HTML', () => {
+  const data = html.match(/src: url\(data:font\/woff2;base64,([A-Za-z0-9+/=]+)\)/)[1];
+  const font = Buffer.from(data, 'base64');
+  assert.equal(font.subarray(0, 4).toString(), 'wOF2');
+  assert.equal(font.length, 31076);
+  assert.match(html, /SIL OPEN FONT LICENSE/);
+  assert.match(html, /--font-ui: 'Nunito Sans'/);
+  assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+});
+
+test('control geometry is defined once, with no theme-specific toolbar overrides', () => {
+  assert.equal((html.match(/--control-height:/g) || []).length, 1);
+  assert.match(html, /--control-height: 40px/);
+  assert.doesNotMatch(html, /\[data-design="chroma"\] :(?:is)\(\.ui-control/);
+  assert.doesNotMatch(html, /const halfStep =|const topBar = 50/);
+  assert.match(html, /band\.style\.left = left/);
+  assert.match(html, /GridView\.frame\.top/);
 });
