@@ -37,7 +37,8 @@ test('manifest and icons work under GitHub Pages project scope', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'manifest.webmanifest'), 'utf8'));
   assert.equal(new URL(manifest.start_url, scope).href, scope);
   assert.equal(manifest.scope, './');
-  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.display, 'fullscreen');
+  assert.equal(manifest.orientation, 'landscape');
   assert.deepEqual(manifest.icons.map(icon => icon.sizes), ['192x192', '512x512']);
   for (const size of [180, 192, 512]) {
     const png = readFileSync(resolve(root, `icons/icon-${size}.png`));

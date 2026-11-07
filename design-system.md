@@ -87,6 +87,33 @@ reason to duplicate interaction handlers or add a second DOM tree.
 
 ## Runtime Contract
 
+### Mobile Screen and Installation
+
+- Touch devices in portrait show a full-width landscape gate. The instrument and
+  toolbars are inert until the viewport becomes landscape; opening help or install
+  instructions keeps the gate inert behind the existing dialog.
+- Entering portrait releases active and held notes and closes portaled dropdowns.
+  Merely opening the page, rotating it or installing never asks for MIDI access.
+- Fullscreen and rotation are explicit actions. Request fullscreen from the click
+  gesture, then attempt a landscape lock. Wait for actual viewport orientation,
+  not just promise resolution. Unsupported/denied APIs retain manual guidance.
+- Phone landscape toolbars use 56px rows, with the existing 40px controls and
+  device safe areas. Desktop and portrait layout keep the shared sizing rules.
+- Install PWA is visible on the main toolbar and portrait gate. A captured
+  beforeinstallprompt is single-use; without it, a separate view gives short
+  Android, iPhone/iPad or desktop instructions. Cancellation is not an installation.
+- The manifest requests fullscreen and landscape. Browsers may fall back to a
+  supported display mode. Installed standalone/fullscreen/minimal-ui launches hide
+  install buttons; a regular tab using the Fullscreen API is not marked installed.
+- ScreenMode owns orientation/fullscreen. AppShell owns installation and offline
+  updates. Neither changes the pitch or MIDI routing model.
+
+Browser constraints: [orientation lock](https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock),
+[install prompt](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event),
+[iPhone home-screen apps](https://support.apple.com/en-eg/guide/iphone/iphea86e5236/ios).
+
+### Appearance
+
 - `Appearance.apply(id, true)` validates the theme ID, sets `data-skin`,
   `data-design` and browser color scheme, and persists only `glissando.skin`.
 - `Appearance.refresh()` resolves CSS tokens into a small cached canvas palette

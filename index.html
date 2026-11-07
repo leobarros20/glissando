@@ -475,6 +475,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   }
   #botSettings { display: flex; align-items: center; gap: var(--space-4); flex: 1; justify-content: flex-end; }
   #modeBtn { min-width: 124px; }
+  #fullscreenBtn .icon-collapse { display: none; }
+  #fullscreenBtn[aria-pressed="true"] .icon-expand { display: none; }
+  #fullscreenBtn[aria-pressed="true"] .icon-collapse { display: block; }
   #panic { color: var(--color-danger); border-color: var(--color-danger-border); }
   .mode-indicator::before, #midiPanel .dot {
     content: ''; display: inline-block; width: 6px; height: 6px;
@@ -589,6 +592,46 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     *, *::before, *::after { transition: none !important; animation: none !important; }
   }
 
+  /* A sideways phone uses one compact toolbar row. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    :root {
+      --top-bar-h: calc(56px + env(safe-area-inset-top));
+      --bot-bar-h: calc(56px + env(safe-area-inset-bottom));
+    }
+    #appHeader { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: 1fr; gap: var(--space-3); }
+    .skin-brand { font-size: 18px; }
+    #bar { grid-column: 2; grid-row: 1; border-top: 0; }
+    #appearanceTools { grid-column: 3; grid-row: 1; }
+  }
+  #appHeader, #botBar {
+    padding-left: max(var(--space-3), env(safe-area-inset-left));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
+  }
+  #orientationGate {
+    position: fixed; inset: 0; z-index: 100; overflow-y: auto; touch-action: pan-y;
+    display: grid; grid-template-rows: auto 1fr; gap: var(--space-6);
+    padding: max(var(--space-6), env(safe-area-inset-top)) max(var(--space-6), env(safe-area-inset-right)) max(var(--space-6), env(safe-area-inset-bottom)) max(var(--space-6), env(safe-area-inset-left));
+    background: var(--color-app); color: var(--color-text);
+  }
+  .orientation-brand { font-size: var(--text-brand); }
+  .orientation-content { align-self: center; width: min(100%, 360px); margin: 0 auto; text-align: center; }
+  .orientation-symbol { display: flex; align-items: center; justify-content: center; gap: var(--space-4); color: var(--color-focus); margin-bottom: var(--space-6); }
+  .orientation-symbol .rotate-phone { width: 64px; height: 64px; transform: rotate(90deg); stroke-width: 1.5; }
+  .orientation-symbol .ui-icon:last-child { width: 32px; height: 32px; }
+  #orientationTitle { margin: 0 0 var(--space-3); font-size: 26px; line-height: 1.2; font-weight: 800; }
+  .orientation-content p { margin: 0 0 var(--space-4); color: var(--color-muted); font-size: var(--text-body); line-height: 1.5; }
+  .orientation-actions { display: grid; gap: var(--space-3); margin-top: var(--space-6); }
+  .orientation-actions button { width: 100%; }
+  #orientationStatus { margin: var(--space-3) 0 0; }
+  #screenStatus {
+    position: fixed; bottom: calc(var(--bot-bar-h) + var(--space-2)); left: 50%;
+    transform: translateX(-50%); z-index: 150; margin: 0; padding: var(--space-3);
+    width: min(420px, calc(100vw - 32px)); background: var(--color-surface); color: var(--color-text);
+    border: 1px solid var(--color-border); border-radius: var(--radius-control); box-shadow: var(--shadow-surface);
+  }
+  .popup-view[data-view="install"] { padding-top: 56px; }
+  #installPlatformNote { font-size: var(--text-sm); }
+
   /* Chroma changes the instrument's rendering, never component geometry. */
   #pitchBands { position: absolute; inset: 0; display: none; background: var(--color-lane-alt); }
   .pitch-band { position: absolute; top: 0; bottom: 0; }
@@ -694,6 +737,10 @@ SOFTWARE.
 <header id="appHeader">
   <span class="skin-brand">Glissando</span>
 <div id="bar">
+  <div class="module" id="screenTools">
+    <button class="icon-btn" id="fullscreenBtn" type="button" title="Full screen" aria-label="Full screen" aria-pressed="false" hidden><svg class="ui-icon icon-expand" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M8 3H5a2 2 0 0 0-2 2v3" /> <path d="M21 8V5a2 2 0 0 0-2-2h-3" /> <path d="M3 16v3a2 2 0 0 0 2 2h3" /> <path d="M16 21h3a2 2 0 0 0 2-2v-3" /> </svg><svg class="ui-icon icon-collapse" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M8 3v3a2 2 0 0 1-2 2H3" /> <path d="M21 8h-3a2 2 0 0 1-2-2V3" /> <path d="M3 16h3a2 2 0 0 1 2 2v3" /> <path d="M16 21v-3a2 2 0 0 1 2-2h3" /> </svg></button>
+    <button class="pill" id="installPwa" type="button" data-install-app><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /> </svg>Install PWA</button>
+  </div>
   <div class="module">
     <!-- octave segmented control with arrows on the sides -->
     <div class="seg-control" id="octSeg">
@@ -800,11 +847,39 @@ SOFTWARE.
   </div>
 </div>
 
+<section id="orientationGate" role="dialog" aria-modal="true" aria-labelledby="orientationTitle" aria-describedby="orientationHint" hidden inert>
+  <span class="orientation-brand skin-brand">Glissando</span>
+  <div class="orientation-content">
+    <div class="orientation-symbol" aria-hidden="true"><svg class="ui-icon rotate-phone" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /> </svg><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> </svg></div>
+    <h1 id="orientationTitle" tabindex="-1">Turn to landscape</h1>
+    <p>Glissando is played with your phone or tablet sideways.</p>
+    <p id="orientationHint">Turn your device sideways. If it stays vertical, enable Auto-rotate in your phone's controls.</p>
+    <div class="orientation-actions">
+      <button class="popup-cta" id="rotateDevice" type="button"><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M8 3H5a2 2 0 0 0-2 2v3" /> <path d="M21 8V5a2 2 0 0 0-2-2h-3" /> <path d="M3 16v3a2 2 0 0 0 2 2h3" /> <path d="M16 21h3a2 2 0 0 0 2-2v-3" /> </svg>Full screen &amp; rotate</button>
+      <button class="pill" id="orientationInstall" type="button" data-install-app><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /> </svg>Install PWA</button>
+      <button class="popup-link" id="orientationHelp" type="button">Connection help</button>
+    </div>
+    <p id="orientationStatus" role="status"></p>
+  </div>
+</section>
+<p id="screenStatus" role="status" hidden></p>
+
 <div id="popupBackdrop" class="popup-backdrop" inert aria-hidden="true">
   <div id="popup" class="popup ui-surface" role="dialog" aria-modal="true" aria-label="Glissando help">
     <div class="popup-close-row">
 <button class="popup-close" id="popupClose" title="Close help" aria-label="close help"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></button>
 
+    </div>
+    <div class="popup-view hidden" data-view="install">
+      <h2 class="popup-title-sm">Install Glissando</h2>
+      <div class="popup-help">
+        <p>Open it from your home screen, without the browser's address bar.</p>
+        <ol id="installSteps"></ol>
+        <button class="popup-cta" id="installPromptBtn" type="button" data-install-app hidden>Install PWA</button>
+        <p id="installStatus" role="status"></p>
+        <p id="installPlatformNote"></p>
+        <button class="popup-link" data-goto="help" type="button">Back to help</button>
+      </div>
     </div>
     <!-- START VIEW -->
     <div class="popup-view" data-view="start">
@@ -864,9 +939,9 @@ SOFTWARE.
         </details>
         <details id="appDetails">
           <summary>Glissando app</summary>
-          <p id="appInstallHint">Optional: use your browser menu to add Glissando to your home screen. You can keep using this URL without installing anything.</p>
+          <p id="appInstallHint">Install Glissando to open it without the browser's address bar.</p>
           <div id="appActions">
-            <button class="popup-link" id="appInstall" hidden>add to home screen</button>
+            <button class="pill" id="appInstall" type="button" data-install-app>Install PWA</button>
             <button class="popup-link" id="appUpdate" hidden>update and reopen</button>
           </div>
           <p id="appStatus" role="status">Web version</p>
@@ -970,7 +1045,7 @@ const Dropdown = (() => {
       getValue() { return value; },
     };
   }
-  return { make };
+  return { make, close: closeMenu };
 })();
 
 
@@ -2662,14 +2737,16 @@ const Popup = (() => {
     backdrop.inert = false;
     backdrop.setAttribute('aria-hidden', 'false');
     backdrop.classList.add('visible');
+    document.dispatchEvent(new Event('glissando:popupchange'));
     closeBtn.focus();
   }
   function hide() {
     const wasVisible = backdrop.classList.contains('visible');
-    if (wasVisible && returnFocus) returnFocus.focus();
     backdrop.classList.remove('visible');
     backdrop.inert = true;
     backdrop.setAttribute('aria-hidden', 'true');
+    document.dispatchEvent(new Event('glissando:popupchange'));
+    if (wasVisible && returnFocus && !returnFocus.closest('[inert]')) returnFocus.focus();
   }
   closeBtn.addEventListener('click', startGlissando);
   // Click backdrop (outside the popup card) to close
@@ -2695,6 +2772,7 @@ const Popup = (() => {
 let appStarted = false;
 function startGlissando() {
   Popup.hide();
+  if (!document.getElementById('orientationGate').hidden) return;
   if (appStarted) {
     Audio.resume();
     return;
@@ -2705,7 +2783,6 @@ function startGlissando() {
   Controller.start();
   appStarted = true;
 
-  try { screen.orientation.lock('landscape').catch(() => {}); } catch(_){}
   try { navigator.wakeLock.request('screen').catch(() => {}); } catch(_){}
 }
 ['popupStartBtn', 'popupHelpPlayBtn'].forEach(id => {
@@ -2832,21 +2909,56 @@ document.addEventListener('visibilitychange', () => {
 
 /* Optional app shell. The instrument and HTML text editor remain self-contained. */
 const AppShell = (() => {
-  const installButton = document.getElementById('appInstall');
+  const installButtons = [...document.querySelectorAll('[data-install-app]')];
+  const promptButton = document.getElementById('installPromptBtn');
+  const installStatus = document.getElementById('installStatus');
   const updateButton = document.getElementById('appUpdate');
   const status = document.getElementById('appStatus');
   const updateStatus = document.getElementById('appUpdateStatus');
   const standalone = matchMedia('(display-mode: standalone)');
+  const fullscreen = matchMedia('(display-mode: fullscreen)');
+  const minimal = matchMedia('(display-mode: minimal-ui)');
+  const appLaunch = standalone.matches || minimal.matches || navigator.standalone === true ||
+    (fullscreen.matches && !document.fullscreenElement);
+  const appleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let installPrompt = null;
+  let installedThisVisit = false;
+  let installing = false;
   let registration = null;
   let ready = false;
   let updating = false;
   let updateTimer = null;
   let lastCheck = 0;
 
+  function inApp() {
+    // The Fullscreen API also matches display-mode: fullscreen, but is not an installation.
+    return appLaunch || standalone.matches || minimal.matches || navigator.standalone === true ||
+      (fullscreen.matches && !document.fullscreenElement);
+  }
+  const installSteps = appleMobile
+    ? ['Open this page in Safari. Tap Share, then Add to Home Screen.',
+       'Keep Open as Web App enabled if shown, then tap Add.',
+       'Open Glissando from your home screen and turn your device sideways.']
+    : /Android/.test(navigator.userAgent)
+      ? ['In Chrome, open the browser menu and choose Add to home screen or Install app.',
+         'Choose Install if offered, then open Glissando from your home screen.']
+      : ['Open your browser menu and choose Install Glissando or Install this page as an app.',
+         'Open Glissando from your apps. If installation is not offered, use a supported browser such as Chrome or Edge.'];
+  document.getElementById('installSteps').replaceChildren(...installSteps.map(text => {
+    const item = document.createElement('li');
+    item.textContent = text;
+    return item;
+  }));
+  document.getElementById('installPlatformNote').textContent =
+    'Already installed? Open Glissando from your home screen or app launcher. Installation does not change MIDI compatibility.';
+
   function render() {
-    const installed = standalone.matches || navigator.standalone === true;
-    installButton.hidden = installed || !installPrompt;
+    const installed = inApp() || installedThisVisit;
+    for (const button of installButtons) {
+      button.hidden = installed || (button === promptButton && !installPrompt);
+      button.disabled = installing;
+    }
     document.getElementById('appInstallHint').hidden = installed;
     status.textContent = ready
       ? (navigator.onLine ? 'Available offline' : 'Offline - ready to play')
@@ -2856,6 +2968,7 @@ const AppShell = (() => {
     updateButton.disabled = updating;
     document.getElementById('appUpdateNotice').hidden = !waiting;
     document.getElementById('helpBtn').classList.toggle('update-ready', waiting);
+    document.dispatchEvent(new Event('glissando:appmodechange'));
   }
 
   window.addEventListener('beforeinstallprompt', event => {
@@ -2863,17 +2976,45 @@ const AppShell = (() => {
     installPrompt = event;
     render();
   });
-  window.addEventListener('appinstalled', () => { installPrompt = null; render(); });
-  standalone.addEventListener('change', render);
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    installedThisVisit = true;
+    installStatus.textContent = 'Installed. Open Glissando from your home screen or app launcher.';
+    render();
+  });
+  for (const mode of [standalone, fullscreen, minimal]) mode.addEventListener('change', render);
+  document.addEventListener('fullscreenchange', render);
   window.addEventListener('online', render);
   window.addEventListener('offline', render);
-  installButton.addEventListener('click', async () => {
+  async function install() {
+    if (installing || inApp() || installedThisVisit) return;
     const prompt = installPrompt;
-    if (!prompt) return;
+    if (!prompt) {
+      installStatus.textContent = 'Use your browser menu to install this app.';
+      Popup.show('install');
+      return;
+    }
     installPrompt = null;
+    installing = true;
     render();
-    try { await prompt.prompt(); } catch (_) {}
-  });
+    try {
+      // Call directly in the click gesture; each browser prompt is single-use.
+      const choice = await prompt.prompt();
+      const result = choice?.outcome ? choice : await prompt.userChoice;
+      if (installedThisVisit) return;
+      installStatus.textContent = result?.outcome === 'accepted'
+        ? 'Installation requested. When it finishes, open Glissando from your home screen or app launcher.'
+        : 'Installation cancelled. You can keep using the website, or install later from your browser menu.';
+      Popup.show('install');
+    } catch (_) {
+      installStatus.textContent = 'The install prompt could not open. Use your browser menu instead.';
+      Popup.show('install');
+    } finally {
+      installing = false;
+      render();
+    }
+  }
+  for (const button of installButtons) button.addEventListener('click', install);
 
   function unlock(message) {
     clearTimeout(updateTimer);
@@ -2958,7 +3099,118 @@ const AppShell = (() => {
     void prepareOfflineApp().catch(() => { ready = false; render(); });
   }
   render();
-  return {};
+  return { get inApp() { return inApp(); }, get appleMobile() { return appleMobile; } };
+})();
+
+/* Screen controls stay separate from starting audio or asking for MIDI permission. */
+const ScreenMode = (() => {
+  const portrait = matchMedia('(orientation: portrait)');
+  const touch = matchMedia('(any-pointer: coarse)');
+  const fullscreen = matchMedia('(display-mode: fullscreen)');
+  const gate = document.getElementById('orientationGate');
+  const rotateButton = document.getElementById('rotateDevice');
+  const fullButton = document.getElementById('fullscreenBtn');
+  const gateStatus = document.getElementById('orientationStatus');
+  const status = document.getElementById('screenStatus');
+  const parts = ['stage', 'appHeader', 'botBar', 'midiPanel'].map(id => document.getElementById(id));
+  const manualHint = AppShell.appleMobile
+    ? 'Turn your device sideways. If it stays vertical, turn off Portrait Orientation Lock in Control Center.'
+    : 'Turn your device sideways. If it stays vertical, enable Auto-rotate in your phone\'s controls.';
+  document.getElementById('orientationHint').textContent = manualHint;
+  let wasBlocked = false;
+  let wasHelpOpen = false;
+  let busy = false;
+  let ownsLock = false;
+  let statusTimer;
+  const canFullscreen = () => typeof document.documentElement.requestFullscreen === 'function' && document.fullscreenEnabled !== false;
+  const needsLandscape = () => touch.matches && portrait.matches;
+
+  function render() {
+    const blocked = needsLandscape();
+    const helpOpen = document.getElementById('popupBackdrop').classList.contains('visible');
+    if (blocked || helpOpen) Dropdown.close();
+    if (blocked && !wasBlocked) Controller.panic();
+    gate.hidden = !blocked;
+    gate.inert = !blocked || helpOpen;
+    for (const part of parts) {
+      part.inert = blocked || helpOpen || (part.id === 'stage' && document.documentElement.classList.contains('app-updating'));
+    }
+    const active = !!document.fullscreenElement;
+    fullButton.hidden = !canFullscreen() || (AppShell.inApp && fullscreen.matches && !active);
+    fullButton.setAttribute('aria-pressed', String(active));
+    fullButton.title = active ? 'Exit full screen' : 'Full screen';
+    fullButton.setAttribute('aria-label', fullButton.title);
+    fullButton.disabled = busy;
+    rotateButton.hidden = !canFullscreen() && typeof screen.orientation?.lock !== 'function';
+    rotateButton.disabled = busy;
+    document.getElementById('screenTools').hidden = fullButton.hidden && document.getElementById('installPwa').hidden;
+    if (blocked && !helpOpen && (!wasBlocked || wasHelpOpen)) {
+      (rotateButton.hidden ? document.getElementById('orientationTitle') : rotateButton).focus();
+    }
+    wasBlocked = blocked;
+    wasHelpOpen = helpOpen;
+  }
+  function announce(message) {
+    clearTimeout(statusTimer);
+    gateStatus.textContent = needsLandscape() ? message : '';
+    status.textContent = message;
+    status.hidden = needsLandscape() || !message;
+    if (message) statusTimer = setTimeout(() => { status.hidden = true; }, 7000);
+  }
+  async function enterLandscape() {
+    if (busy) return;
+    busy = true;
+    announce('');
+    render();
+    let fullscreenFailed = false;
+    try {
+      if (!document.fullscreenElement && !(AppShell.inApp && fullscreen.matches)) {
+        if (canFullscreen()) {
+          try { await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); }
+          catch (_) { fullscreenFailed = true; }
+        } else fullscreenFailed = true;
+      }
+      // Android normally requires fullscreen first. A resolved lock is not proof of rotation.
+      if (touch.matches && typeof screen.orientation?.lock === 'function') {
+        try { await screen.orientation.lock('landscape'); ownsLock = true; }
+        catch (_) { /* Keep the manual rotation guidance visible. */ }
+      }
+      if (needsLandscape()) announce('Rotate your device sideways to continue.');
+      else if (fullscreenFailed && !AppShell.inApp) announce('Full screen is unavailable here. Use Install PWA to open Glissando without the address bar.');
+    } finally {
+      busy = false;
+      render();
+    }
+  }
+  async function toggleFullscreen() {
+    if (busy) return;
+    if (!document.fullscreenElement) return enterLandscape();
+    try { await document.exitFullscreen(); }
+    catch (_) { announce('Could not exit full screen. Use your browser\'s Back or Escape control.'); }
+  }
+  function onFullscreenChange() {
+    if (!document.fullscreenElement && ownsLock) {
+      try { screen.orientation?.unlock(); } catch (_) {}
+      ownsLock = false;
+    }
+    render();
+  }
+  rotateButton.addEventListener('click', enterLandscape);
+  fullButton.addEventListener('click', toggleFullscreen);
+  document.getElementById('orientationHelp').addEventListener('click', () => Popup.show('help'));
+  for (const query of [portrait, touch, fullscreen]) query.addEventListener('change', render);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('glissando:popupchange', render);
+  document.addEventListener('glissando:appmodechange', render);
+  gate.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const buttons = [...gate.querySelectorAll('button')].filter(el => !el.disabled && el.getClientRects().length);
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  });
+  render();
+  return { enterLandscape };
 })();
 </script>
 </body>

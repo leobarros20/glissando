@@ -85,10 +85,10 @@ test('audio starts in the gesture and does not request MIDI permission', () => {
     html.indexOf("['popupStartBtn', 'popupHelpPlayBtn']")
   );
   const controllerStart = startFunction.indexOf('Controller.start();');
-  const orientationLock = startFunction.indexOf("screen.orientation.lock('landscape')");
   const wakeLock = startFunction.indexOf("navigator.wakeLock.request('screen')");
 
-  assert.ok(controllerStart !== -1 && controllerStart < orientationLock);
+  assert.ok(controllerStart !== -1);
+  assert.doesNotMatch(startFunction, /screen\.orientation\.lock|requestFullscreen/);
   assert.ok(controllerStart < wakeLock);
   assert.doesNotMatch(startFunction, /MidiOut\.(init|requestAccess)/);
   assert.doesNotMatch(startFunction, /await/);

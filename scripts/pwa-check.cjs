@@ -67,7 +67,8 @@ async function appHelp(page) {
     // installation. All app-specific installability requirements must still pass.
     assert.deepEqual(installability.installabilityErrors.filter(error => error.errorId !== 'in-incognito'), []);
     const parsed = JSON.parse(manifest.data);
-    assert.equal(parsed.display, 'standalone');
+    assert.equal(parsed.display, 'fullscreen');
+    assert.equal(parsed.orientation, 'landscape');
     assert.equal(new URL(parsed.start_url, manifest.url).href, url);
     for (const icon of parsed.icons) {
       const response = await context.request.get(new URL(icon.src, manifest.url).href);
@@ -75,6 +76,10 @@ async function appHelp(page) {
       assert.match(response.headers()['content-type'], /image\/png/);
     }
     console.log('PASS: project-scoped manifest, PNG icons and active offline worker');
+    assert.equal(await page.locator('#orientationGate').isVisible(), true);
+    await page.screenshot({ path: join(out, 'mobile-portrait-rotate.png') });
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.waitForFunction(() => document.getElementById('orientationGate').hidden);
 
     await page.evaluate(() => {
       window.__installPrompts = 0;
@@ -85,7 +90,9 @@ async function appHelp(page) {
     await appHelp(page);
     await page.locator('#appInstall').click();
     assert.equal(await page.evaluate(() => __installPrompts), 1);
-    assert.equal(await page.locator('#appInstall').isVisible(), false);
+    assert.equal(await page.locator('#installPromptBtn').isVisible(), false);
+    assert.match(await page.locator('#installStatus').textContent(), /cancelled/);
+    await page.locator('[data-view="install"] [data-goto="help"]').click();
     await page.screenshot({ path: join(out, 'mobile-app-options.png') });
     await page.locator('#popupHelpPlayBtn').click();
     await page.locator('#skinSelect').selectOption(skin);

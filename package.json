@@ -6,6 +6,7 @@
     "test": "node --test",
     "prepare:pwa": "node scripts/prepare-pwa.cjs",
     "test:browser": "node scripts/browser-check.cjs",
-    "test:pwa": "node scripts/pwa-check.cjs"
+    "test:pwa": "node scripts/pwa-check.cjs",
+    "test:screen": "node scripts/screen-mode-check.cjs"
   }
 }

@@ -1,4 +1,27 @@
-# UI Consolidation QA
+# Landscape and PWA QA
+
+Date: 2026-11-07
+
+- Portrait gate tested at 320x568, 390x844 and 768x1024 with touch input. Landscape
+  restores the instrument at 844x390. No initial audio or MIDI permission request.
+- Fullscreen is requested before the landscape lock. A fulfilled lock promise
+  alone does not dismiss the gate. Real desktop browser fullscreen entry/exit,
+  rejected APIs, unavailable APIs and manual rotation fallbacks passed.
+- Browser installation: native prompt acceptance, cancellation, error, reuse
+  prevention and appinstalled confirmation tested with deterministic API mocks.
+  Android and Safari manual installation guidance inspected in screenshots.
+- Installed standalone, fullscreen and minimal-ui modes hide the install actions.
+  Regular browser fullscreen keeps installation available.
+- Returning to portrait releases held notes, closes portaled menus and prevents
+  playing behind the gate. Help remains accessible and returns to the gate.
+- Regression suite passed: audio after help, independent MPE fingers, skin changes,
+  responsive geometry, manifest scope, offline playing and safe update behavior.
+- 44 unit tests passed. Screenshots: workspace qa-landscape/screen, /pwa and
+  /regression. Browser and temporary server processes close in test cleanup.
+- Limits: phone OS rotation and real installation were not exercised on hardware.
+  Install and orientation APIs are partly simulated; desktop fullscreen is real.
+
+## Archived Review: UI Consolidation
 
 Date: 2026-10-25
 
