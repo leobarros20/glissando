@@ -623,12 +623,23 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   .orientation-actions { display: grid; gap: var(--space-3); margin-top: var(--space-6); }
   .orientation-actions button { width: 100%; }
   #orientationStatus { margin: var(--space-3) 0 0; }
-  #screenStatus {
+  .ui-toast {
     position: fixed; bottom: calc(var(--bot-bar-h) + var(--space-2)); left: 50%;
     transform: translateX(-50%); z-index: 150; margin: 0; padding: var(--space-3);
     width: min(420px, calc(100vw - 32px)); background: var(--color-surface); color: var(--color-text);
     border: 1px solid var(--color-border); border-radius: var(--radius-control); box-shadow: var(--shadow-surface);
   }
+  #installNotice { z-index: 250; pointer-events: none; border-color: var(--color-success); }
+  #installNotice:empty { visibility: hidden; }
+  .install-spinner { display: none; }
+  [data-install-app][aria-busy="true"] { opacity: 1; cursor: progress; }
+  [data-install-app][aria-busy="true"] .install-idle { display: none; }
+  [data-install-app][aria-busy="true"] .install-spinner,
+  #installStatus.is-loading .install-spinner { display: block; animation: install-spin 900ms linear infinite; }
+  @keyframes install-spin { to { transform: rotate(360deg); } }
+  #installStatus { display: flex; align-items: flex-start; gap: var(--space-2); }
+  #installStatus .ui-icon { margin-top: 3px; }
+  #installStatus[data-state="confirmed"] { color: var(--color-success); }
   .popup-view[data-view="install"] { padding-top: 56px; }
   #installPlatformNote { font-size: var(--text-sm); }
 
@@ -739,7 +750,7 @@ SOFTWARE.
 <div id="bar">
   <div class="module" id="screenTools">
     <button class="icon-btn" id="fullscreenBtn" type="button" title="Full screen" aria-label="Full screen" aria-pressed="false" hidden><svg class="ui-icon icon-expand" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M8 3H5a2 2 0 0 0-2 2v3" /> <path d="M21 8V5a2 2 0 0 0-2-2h-3" /> <path d="M3 16v3a2 2 0 0 0 2 2h3" /> <path d="M16 21h3a2 2 0 0 0 2-2v-3" /> </svg><svg class="ui-icon icon-collapse" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M8 3v3a2 2 0 0 1-2 2H3" /> <path d="M21 8h-3a2 2 0 0 1-2-2V3" /> <path d="M3 16h3a2 2 0 0 1 2 2v3" /> <path d="M16 21v-3a2 2 0 0 1 2-2h3" /> </svg></button>
-    <button class="pill" id="installPwa" type="button" data-install-app><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /> </svg>Install PWA</button>
+    <button class="pill" id="installPwa" type="button" data-install-app>Install PWA</button>
   </div>
   <div class="module">
     <!-- octave segmented control with arrows on the sides -->
@@ -856,13 +867,18 @@ SOFTWARE.
     <p id="orientationHint">Turn your device sideways. If it stays vertical, enable Auto-rotate in your phone's controls.</p>
     <div class="orientation-actions">
       <button class="popup-cta" id="rotateDevice" type="button"><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M8 3H5a2 2 0 0 0-2 2v3" /> <path d="M21 8V5a2 2 0 0 0-2-2h-3" /> <path d="M3 16v3a2 2 0 0 0 2 2h3" /> <path d="M16 21h3a2 2 0 0 0 2-2v-3" /> </svg>Full screen &amp; rotate</button>
-      <button class="pill" id="orientationInstall" type="button" data-install-app><svg class="ui-icon " aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /> </svg>Install PWA</button>
+      <button class="pill" id="orientationInstall" type="button" data-install-app>Install PWA</button>
       <button class="popup-link" id="orientationHelp" type="button">Connection help</button>
     </div>
     <p id="orientationStatus" role="status"></p>
   </div>
 </section>
-<p id="screenStatus" role="status" hidden></p>
+<p id="screenStatus" class="ui-toast" role="status" hidden></p>
+<p id="installNotice" class="ui-toast" role="status" aria-atomic="true"></p>
+<template id="installIcons">
+  <svg class="ui-icon install-idle" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+  <svg class="ui-icon install-spinner" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+</template>
 
 <div id="popupBackdrop" class="popup-backdrop" inert aria-hidden="true">
   <div id="popup" class="popup ui-surface" role="dialog" aria-modal="true" aria-label="Glissando help">
@@ -876,7 +892,7 @@ SOFTWARE.
         <p>Open it from your home screen, without the browser's address bar.</p>
         <ol id="installSteps"></ol>
         <button class="popup-cta" id="installPromptBtn" type="button" data-install-app hidden>Install PWA</button>
-        <p id="installStatus" role="status"></p>
+        <p id="installStatus" role="status" aria-atomic="true"><span id="installStatusText"></span></p>
         <p id="installPlatformNote"></p>
         <button class="popup-link" data-goto="help" type="button">Back to help</button>
       </div>
@@ -2912,6 +2928,11 @@ const AppShell = (() => {
   const installButtons = [...document.querySelectorAll('[data-install-app]')];
   const promptButton = document.getElementById('installPromptBtn');
   const installStatus = document.getElementById('installStatus');
+  const installStatusText = document.getElementById('installStatusText');
+  const installNotice = document.getElementById('installNotice');
+  const installIcons = document.getElementById('installIcons');
+  for (const button of installButtons) button.prepend(installIcons.content.cloneNode(true));
+  installStatus.prepend(installIcons.content.querySelector('.install-spinner').cloneNode(true));
   const updateButton = document.getElementById('appUpdate');
   const status = document.getElementById('appStatus');
   const updateStatus = document.getElementById('appUpdateStatus');
@@ -2924,7 +2945,9 @@ const AppShell = (() => {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let installPrompt = null;
   let installedThisVisit = false;
-  let installing = false;
+  let installState = 'idle';
+  let installTimer = null;
+  let noticeTimer = null;
   let registration = null;
   let ready = false;
   let updating = false;
@@ -2955,10 +2978,17 @@ const AppShell = (() => {
 
   function render() {
     const installed = inApp() || installedThisVisit;
+    const installing = installState === 'prompting' || installState === 'waiting';
     for (const button of installButtons) {
       button.hidden = installed || (button === promptButton && !installPrompt);
       button.disabled = installing;
+      button.setAttribute('aria-busy', String(installing));
+      button.setAttribute('aria-label', installing ? 'Installing Glissando' : 'Install PWA');
     }
+    installStatus.classList.toggle('is-loading', installing);
+    installStatus.dataset.state = installState;
+    document.getElementById('installSteps').hidden = installed || installing;
+    document.getElementById('installPlatformNote').hidden = installed || installing;
     document.getElementById('appInstallHint').hidden = installed;
     status.textContent = ready
       ? (navigator.onLine ? 'Available offline' : 'Offline - ready to play')
@@ -2971,47 +3001,70 @@ const AppShell = (() => {
     document.dispatchEvent(new Event('glissando:appmodechange'));
   }
 
+  function setInstallState(state, message) {
+    clearTimeout(installTimer);
+    installState = state;
+    installStatusText.textContent = message;
+    render();
+  }
+
+  function scheduleNoticeDismissal() {
+    clearTimeout(noticeTimer);
+    if (!document.hidden && installNotice.textContent) {
+      noticeTimer = setTimeout(() => { installNotice.textContent = ''; }, 10000);
+    }
+  }
+  document.addEventListener('visibilitychange', scheduleNoticeDismissal);
+
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     installPrompt = event;
     render();
   });
   window.addEventListener('appinstalled', () => {
+    if (installedThisVisit) return;
     installPrompt = null;
     installedThisVisit = true;
-    installStatus.textContent = 'Installed. Open Glissando from your home screen or app launcher.';
-    render();
+    // Android can fire this before the OS finishes creating the WebAPK icon.
+    const message = /Android/.test(navigator.userAgent)
+      ? 'Glissando added to your apps. The home-screen icon may take a moment to appear.'
+      : 'Glissando installed. Open it from your home screen or app launcher.';
+    setInstallState('confirmed', message);
+    installNotice.textContent = message;
+    scheduleNoticeDismissal();
   });
   for (const mode of [standalone, fullscreen, minimal]) mode.addEventListener('change', render);
   document.addEventListener('fullscreenchange', render);
   window.addEventListener('online', render);
   window.addEventListener('offline', render);
   async function install() {
-    if (installing || inApp() || installedThisVisit) return;
+    if (installState === 'prompting' || installState === 'waiting' || inApp() || installedThisVisit) return;
     const prompt = installPrompt;
     if (!prompt) {
-      installStatus.textContent = 'Use your browser menu to install this app.';
+      if (installState !== 'unconfirmed') setInstallState('manual', 'Use your browser menu to install this app.');
       Popup.show('install');
       return;
     }
     installPrompt = null;
-    installing = true;
-    render();
+    setInstallState('prompting', 'Confirm installation in your browser.');
     try {
       // Call directly in the click gesture; each browser prompt is single-use.
       const choice = await prompt.prompt();
       const result = choice?.outcome ? choice : await prompt.userChoice;
       if (installedThisVisit) return;
-      installStatus.textContent = result?.outcome === 'accepted'
-        ? 'Installation requested. When it finishes, open Glissando from your home screen or app launcher.'
-        : 'Installation cancelled. You can keep using the website, or install later from your browser menu.';
+      if (result?.outcome === 'accepted') {
+        setInstallState('waiting', 'Installation requested. Waiting for your browser to confirm...');
+        installTimer = setTimeout(() => {
+          setInstallState('unconfirmed', 'Your browser has not confirmed installation. Check your home screen or app launcher. You can keep playing here.');
+        }, 30000);
+      } else {
+        setInstallState('cancelled', 'Installation cancelled. You can keep using the website, or install later from your browser menu.');
+      }
       Popup.show('install');
     } catch (_) {
-      installStatus.textContent = 'The install prompt could not open. Use your browser menu instead.';
+      if (installedThisVisit) return;
+      setInstallState('error', 'The install prompt could not open. Use your browser menu instead.');
       Popup.show('install');
-    } finally {
-      installing = false;
-      render();
     }
   }
   for (const button of installButtons) button.addEventListener('click', install);

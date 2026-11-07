@@ -102,6 +102,18 @@ reason to duplicate interaction handlers or add a second DOM tree.
 - Install PWA is visible on the main toolbar and portrait gate. A captured
   beforeinstallprompt is single-use; without it, a separate view gives short
   Android, iPhone/iPad or desktop instructions. Cancellation is not an installation.
+- All install buttons share the same embedded Lucide download/loading icons. Busy
+  states retain their geometry, disable duplicate requests and expose aria-busy.
+  The status row uses the same spinner and respects reduced motion. No percentage
+  is shown because browsers do not expose installation progress.
+- Accepting a prompt waits up to 30 seconds for appinstalled. Cancellation, errors
+  and missing confirmation stop the spinner without claiming success. A late
+  confirmation still works. Manual Safari installation never shows fake progress.
+- appinstalled updates the persistent install status and a polite, nonblocking
+  toast. It does not open a dialog, request notification permission or steal focus.
+  The toast uses the shared ui-toast primitive and lasts 10 visible seconds;
+  backgrounding preserves it until the user returns. Android copy allows for the
+  OS icon to appear later, since appinstalled can precede WebAPK creation.
 - The manifest requests fullscreen and landscape. Browsers may fall back to a
   supported display mode. Installed standalone/fullscreen/minimal-ui launches hide
   install buttons; a regular tab using the Fullscreen API is not marked installed.
@@ -110,6 +122,7 @@ reason to duplicate interaction handlers or add a second DOM tree.
 
 Browser constraints: [orientation lock](https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock),
 [install prompt](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event),
+[installation detection](https://web.dev/learn/pwa/detection),
 [iPhone home-screen apps](https://support.apple.com/en-eg/guide/iphone/iphea86e5236/ios).
 
 ### Appearance

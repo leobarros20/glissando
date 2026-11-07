@@ -1,4 +1,23 @@
-# Landscape and PWA QA
+# PWA Installation Feedback QA
+
+Date: 2026-11-07
+
+- Shared loading icons checked while the native prompt is pending and after
+  acceptance. Button bounds stay unchanged; repeat requests are disabled.
+- Cancellation, prompt errors and a 30-second missing-confirmation fallback stop
+  loading. Fake-clock checks avoid real waiting. appinstalled before prompt
+  resolution and after acceptance retain confirmed status and cancel the timeout.
+- Confirmation is visible after closing help, never opens a dialog, never steals
+  focus and cannot intercept touches. Its dismissal timer pauses while hidden.
+- Dark/light portrait and landscape screenshots inspected in workspace
+  qa-install-feedback. Reduced motion disables the spinner animation.
+- Manual Safari instructions show no invented progress. Android confirmation
+  explicitly allows time for the OS icon to appear. No physical installation
+  completion is inferred from mocked browser events.
+- All 44 unit tests and screen/PWA browser checks passed, including offline audio
+  and guarded updates. Test browsers and temporary servers closed after each run.
+
+## Landscape and PWA QA
 
 Date: 2026-11-07
 
